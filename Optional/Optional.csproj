@@ -4,6 +4,22 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+  
+    <!-- NuGet package metadata -->
+    <PackageId>Optional</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Gianluca Belvisi</Authors>
+    <Company>gianlucabelvisi.com</Company>
+    <Description>A library providing optional/Maybe functionality for .NET</Description>
+    <PackageTags>optional maybe monad</PackageTags>
+    
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/gianlucabelvisi/optional</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/gianlucabelvisi/optional</RepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <IncludeSource>true</IncludeSource>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	
   </PropertyGroup>
 
 </Project>
