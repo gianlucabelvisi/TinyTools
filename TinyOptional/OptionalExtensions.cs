@@ -9,11 +9,11 @@ public static class OptionalExtensions
 
     public static Optional<T> FirstIfExists<T>(this ICollection<T>? source)
     {
-        return source.IsNullOrEmpty() ? Optional<T>.Empty() : Optional<T>.Of(source.FirstOrDefault());
+        return source.IsNullOrEmpty() ? Optional<T>.Empty() : Optional<T>.Of(source!.FirstOrDefault());
     }
     public static Optional<T> LastIfExists<T>(this ICollection<T>? source)
     {
-        return source.IsNullOrEmpty() ? Optional<T>.Empty() : Optional<T>.Of(source.LastOrDefault());
+        return source.IsNullOrEmpty() ? Optional<T>.Empty() : Optional<T>.Of(source!.LastOrDefault());
     }
 
     public static Optional<T> FirstIfExists<T>(this ICollection<T> source, Func<T, bool> predicate)
