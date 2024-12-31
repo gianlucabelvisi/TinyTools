@@ -22,13 +22,18 @@
     <IncludeSymbols>true</IncludeSymbols>
     <IncludeSource>true</IncludeSource>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <RootNamespace>Optional</RootNamespace>
+    <RootNamespace>TinyOptional</RootNamespace>
 	
   </PropertyGroup>
 
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Folder Include="tests\" />
   </ItemGroup>
 
 </Project>
