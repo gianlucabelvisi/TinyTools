@@ -17,8 +17,8 @@
 	<PackageReadmeFile>README.md</PackageReadmeFile>
     
 	<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/gianlucabelvisi/optional</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/gianlucabelvisi/optional</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/gianlucabelvisi/TinyTools</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/gianlucabelvisi/TinyTools</RepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <IncludeSource>true</IncludeSource>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
