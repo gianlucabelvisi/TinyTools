@@ -1,25 +1,6 @@
-# TinyOptional: A Lightweight C# "Maybe" / Optional Type
+# Tiny Optional: A Lightweight C# Optional Type
 
 This library provides a simple **Optional** (a.k.a. “Maybe”) type for C#. It allows you to express the presence or absence of a value without resorting to `null`. If an `Optional<T>` has a value, you can safely work with that value; if it doesn’t, the library’s methods help gracefully handle the “no value” scenario.
-
-## Table of Contents
-- [Why Use an Optional Type?](#why-use-an-optional-type)
-- [Key Features](#key-features)
-- [Installation](#installation)
-- [Getting Started](#getting-started)
-  - [Creating Optionals](#creating-optionals)
-  - [Checking for a Value](#checking-for-a-value)
-  - [Retrieving the Value](#retrieving-the-value)
-  - [Supplying a Default](#supplying-a-default)
-  - [Filtering with `Where`](#filtering-with-where)
-  - [Mapping with `Select`](#mapping-with-select)
-  - [Conditional Actions: `IfPresent` / `IfNotPresent`](#conditional-actions-ifpresent--ifnotpresent)
-- [Extension Methods](#extension-methods)
-  - [Collections](#collections)
-  - [Strings](#strings)
-- [License](#license)
-
----
 
 ## Why Use an Optional Type?
 
@@ -27,27 +8,12 @@ This library provides a simple **Optional** (a.k.a. “Maybe”) type for C#. It
 - **Safety**: Avoid `NullReferenceException` by forcing the developer to deal with the possibility of an empty value.  
 - **Functional Style**: `Where`, `Select`, `SelectMany`, `IfPresent`, etc., allow fluent transformations and checks.
 
----
-
-## Key Features
-
-- **`Of`, `OfNullable`, `Empty`**: Create an `Optional<T>` with or without an initial value.  
-- **Checking**: `IsPresent()`, `IsNotPresent()`.  
-- **Retrieving**: `Get()`, `GetOrThrow(exceptionSupplier)`, `OrElse(...)`, etc.  
-- **Filtering**: `Where(predicate)` returns an empty `Optional` if the predicate fails.  
-- **Transforming**: `Select(...)`, `SelectMany(...)`.  
-- **Conditional Actions**: `IfPresent(...)`, `IfNotPresent(...)`, including async versions.  
-- **Extension Methods**: `FirstIfExists`, `LastIfExists` for collections, `IfAny` for strings, etc.
-
----
 
 ## Installation
 
 ```bash
-  dotnet add package TinyOptional
+dotnet add package TinyOptional
 ```
-
----
 
 ## Getting Started
 
@@ -59,7 +25,7 @@ This library provides a simple **Optional** (a.k.a. “Maybe”) type for C#. It
 var maybeTen = Optional<int>.Of(10);
 
 // Allows null but returns an empty Optional
-var maybeValue = Optional<string>.OfNullable(someString);
+var maybeName = Optional<string>.OfNullable(userName);
 
 // A straightforward empty Optional
 var none = Optional<int>.Empty();
@@ -67,52 +33,43 @@ var none = Optional<int>.Empty();
 
 ### Unboxing an optional
 
+This is a simple and **wrong** way of unboxing an optional:
+
 ```csharp
-var tenMaybe = Optional<int>.Of(10);
+var maybeName = Optional<string>.OfNullable(userName);
 
-# check if the value is present
-bool hasValue = tenMaybe.IsPresent();   
-bool noValue = tenMaybe.IsNotPresent();
-
-# getting the value
-if (tenMaybe.IsPresent())
+if (maybeName.IsPresent())
 {
-    int ten = tenMaybe.Get();
+    var name = maybeName.Get();
 }
 ```
 
-While possible, this is not the suggested workflow, as it would be a glorified, more verbose null-check. Instead, use the methods below.
+While possible, this is not the suggested workflow, as it would be a glorified, more verbose null-check. 
+
+Instead...
 
 ### Unboxing with fallback or error handling
 
 ```csharp
-var empty = Optional<int>.Empty();
+var maybeName = Optional<string>.OfNullable(userName);
 
-// Returns 42 if the Optional is empty
-int value = empty.OrElse(42);
+// Simple fallback
+var name = maybeName.OrElse("No name provided");
 
 // In case the fallback is expensive to compute
-int value2 = empty.OrElseGet(() => ComputeFallback(42));
+var name2 = maybeName.OrElseGet(() => GenerateRandomName());
 
 // In case no fallback is possible
-int value3 = empty.OrElseThrow(() => new Exception("No value available"));
-
+var name3 = empty.OrElseThrow(() => new Exception("Name is required"));
 ```
 
-### Filtering with `Where`
+### Filtering and mapping 
 
-It is possible to apply a where clause to an Optional, returning an empty Optional if the predicate fails.
+It is possible to apply a `Where` clause to an Optional, returning empty if the predicate fails.
 
-```csharp
-var maybeTen = Optional<int>.Of(10);
+The content of an optional can then be transformed using the `Select` method, before being boxed back into an Optional.
 
-// Returns an empty Optional if the value is not greater than 5
-var filtered = maybeTen.Where(value => value > 5);
-```
-
-### Mapping with `Select`
-
-The content of an optional can be transformed using the `Select` method, before being boxed back into an Optional and eventually unboxed.
+This allows for a fluent, style of programming where the presence of the content is not required for the operations on it to take place.
     
 ```csharp
 
@@ -127,10 +84,9 @@ var age = maybeUniverse
     .Whre(u => u.Age > 13)
     .Select(u => u.Age)
     .OrElseThrow(() => new Exception("No universe found"));
-
 ```
 
-### Conditional Actions: `IfPresent` / `IfNotPresent`
+### Conditional Actions
 
 The `IfPresent` and `IfNotPresent` methods allow you to execute an action if the Optional has a value or not, respectively.
 
@@ -142,13 +98,9 @@ maybeTen
     .OrElse(() => Console.WriteLine("No value"));
 ```
 
----
-
-## Extension Methods
-
 ### Collections
 
-The library provides a few extension methods to work with collections of Optionals.
+A version of FirstOrDefault that returns an Optional instead of null.
 
 ```csharp
 var fibonacci = new List<int>() = { 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89 };
@@ -160,8 +112,6 @@ var firstEven = fibonacci
 
 ### Strings
 
-The library provides a few extension methods to work with strings.
-
 ```csharp
   var inputName = ReadInputName();
   
@@ -170,9 +120,7 @@ The library provides a few extension methods to work with strings.
         .OrElse("No name provided");
 ```
 
----
-
 ## License
 
 TinyOptional is licensed under the GPL v3. By using or redistributing this library, you agree to comply with the terms of that license.
-```
+

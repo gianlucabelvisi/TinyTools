@@ -1,4 +1,6 @@
-# TinyTools
+# Tiny Tools
+
+![cover.png](Assets/cover.png)
 
 A collection of small, handy .NET projects and libraries. This repository currently includes:
 
@@ -7,4 +9,4 @@ A collection of small, handy .NET projects and libraries. This repository curren
 
 More projects to come in the future!
 
----
+
