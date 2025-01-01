@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="version.props" Condition="Exists('version.props')" />
+  <Import Project="Version.props" Condition="Exists('Version.props')" />
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
