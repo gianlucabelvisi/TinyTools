@@ -23,8 +23,8 @@ jobs:
 
       # 4. Build in Release mode
       - name: Build
-        run: dotnet build -c Release
+        run: dotnet build -c Release --no-restore
 
       # 5. Push the .nupkg to NuGet.org
       - name: Push to NuGet
-        run: dotnet nuget push "TinyOptional/bin/Release/TinyOptional.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source "https://api.nuget.org/v3/index.json"
+        run: dotnet nuget push "TinyOptional/bin/Release/TinyOptional.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source "https://api.nuget.org/v3/index.json" --skip-duplicate
