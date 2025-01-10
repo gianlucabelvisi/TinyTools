@@ -1,9 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="Version.props" Condition="Exists('Version.props')" />
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+	
+    <!-- NuGet package metadata -->
+    <PackageId>TinyString</PackageId>
+    <Version>$(ProjectVersion)</Version>
+    <Authors>Gianluca Belvisi</Authors>
+    <Company>gianlucabelvisi.com</Company>
+    <Description>A library providing optional/Maybe functionality for .NET</Description>
+    <PackageTags>optional maybe monad</PackageTags>
+	<PackageReadmeFile>README.md</PackageReadmeFile>    
+	<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/gianlucabelvisi/TinyTools</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/gianlucabelvisi/TinyTools</RepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <IncludeSource>true</IncludeSource>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RootNamespace>TinyString</RootNamespace>
+	
   </PropertyGroup>
 
   <ItemGroup>

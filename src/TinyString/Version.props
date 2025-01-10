@@ -1,0 +1,6 @@
+<Project>
+    <PropertyGroup>
+        <!-- Set your version (for your library, package, etc.) here -->
+        <ProjectVersion>0.0.1</ProjectVersion>
+    </PropertyGroup>
+</Project>

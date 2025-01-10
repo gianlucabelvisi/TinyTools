@@ -14,8 +14,7 @@
     <Company>gianlucabelvisi.com</Company>
     <Description>A library providing optional/Maybe functionality for .NET</Description>
     <PackageTags>optional maybe monad</PackageTags>
-	<PackageReadmeFile>README.md</PackageReadmeFile>
-    
+	<PackageReadmeFile>README.md</PackageReadmeFile>    
 	<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/gianlucabelvisi/TinyTools</PackageProjectUrl>
     <RepositoryUrl>https://github.com/gianlucabelvisi/TinyTools</RepositoryUrl>
