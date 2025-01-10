@@ -1,0 +1,30 @@
+name: Publish Tiny String
+
+on:
+  # Only run manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Check out your code
+      - uses: actions/checkout@v3
+
+      # 2. Setup .NET (adjust version if needed)
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      # 3. Restore dependencies
+      - name: Restore
+        run: dotnet restore
+
+      # 4. Build in Release mode
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      # 5. Push the .nupkg to NuGet.org
+      - name: Push to NuGet
+        run: dotnet nuget push "TinyString/bin/Release/TinyString.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source "https://api.nuget.org/v3/index.json" --skip-duplicate
