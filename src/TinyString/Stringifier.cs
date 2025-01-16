@@ -19,19 +19,19 @@ public static class Stringifier
         // Fallback if attribute is missing
         if (attr is null)
         {
-            return DefaultStringify(obj);
+            return obj.ToString() ?? "null";
         }
 
         // Extract config
-        var printStyle          = attr.PrintStyle;
-        var printClassName      = attr.PrintClassName;
+        var printStyle                = attr.PrintStyle;
+        var printClassName       = attr.PrintClassName;
         var propertySeparator   = attr.PropertySeparator;
         var collectionSeparator = attr.CollectionSeparator;
-        var emoji               = attr.Emoji ?? "";
-        var decimals            = attr.Decimals;
-        var namingFormat        = attr.NamingFormat;
+        var emoji              = attr.Emoji;
+        var decimals              = attr.Decimals;
+        var namingFormat              = attr.NamingFormat;
         var classPropertyFormat = attr.PropertyFormat;
-        var classNameSeparator  = attr.ClassNameSeparator; // <-- New
+        var classNameSeparator  = attr.ClassNameSeparator;
 
         var sb = new StringBuilder();
 
@@ -97,11 +97,6 @@ public static class Stringifier
         }
 
         return sb.ToString().TrimEnd(); // optional: remove trailing newline/spaces
-    }
-
-    private static string DefaultStringify(object obj)
-    {
-        return obj.ToString() ?? string.Empty;
     }
 
     private static string ConvertName(string name, NamingFormat namingFormat)

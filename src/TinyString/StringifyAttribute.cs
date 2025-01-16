@@ -35,9 +35,9 @@ public class StringifyAttribute : Attribute
     /// <summary>
     /// If set, prints this emoji at the start instead of the class name.
     /// If <see cref="PrintClassName"/> is also <c>true</c> but <c>Emoji</c> is specified,
-    /// the emoji takes precedence. Default = <c>null</c>.
+    /// the emoji takes precedence. Default = <c></c>.
     /// </summary>
-    public string? Emoji { get; set; } = null;
+    public string? Emoji { get; set; } = "";
 
     /// <summary>
     /// Number of decimal places to use when printing floating-point properties.
