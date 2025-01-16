@@ -1,14 +1,11 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 
 namespace TinyString;
 
-public static class ToStringer
+public static class Stringifier
 {
     public static string Stringify(this object? obj)
     {
