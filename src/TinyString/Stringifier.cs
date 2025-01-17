@@ -19,44 +19,41 @@ public static class Stringifier
         // Fallback if attribute is missing
         if (attr is null)
         {
-            return obj.ToString() ?? "null";
+            return obj.ToString() ?? string.Empty;
         }
 
-        // Extract config
+        // Object configuration
         var printStyle                = attr.PrintStyle;
         var printClassName       = attr.PrintClassName;
+        var emoji              = attr.Emoji;
         var propertySeparator   = attr.PropertySeparator;
         var collectionSeparator = attr.CollectionSeparator;
-        var emoji              = attr.Emoji;
+        var classNameSeparator  = attr.ClassNameSeparator;
         var decimals              = attr.Decimals;
         var namingFormat              = attr.NamingFormat;
         var classPropertyFormat = attr.PropertyFormat;
-        var classNameSeparator  = attr.ClassNameSeparator;
 
         var sb = new StringBuilder();
 
         // Class name / emoji
-        if (!string.IsNullOrEmpty(emoji))
+        if (emoji.IsNotEmpty())
         {
             sb.Append(emoji);
         }
-        else if (printClassName)
+
+        if (printClassName)
         {
+            sb.Append(sb.Length == 0 ? "" : " ");
             sb.Append(objType.Name);
         }
 
         // If we printed an emoji or class name, append line or ClassNameSeparator
-        if (!string.IsNullOrEmpty(emoji) || printClassName)
+        if (sb.Length > 0)
         {
             if (printStyle == PrintStyle.MultiLine)
-            {
                 sb.AppendLine();
-            }
             else
-            {
-                // Here is the change:
                 sb.Append(classNameSeparator);
-            }
         }
 
         // Gather public readable instance properties
@@ -64,13 +61,13 @@ public static class Stringifier
                            .Where(p => p.GetIndexParameters().Length == 0)
                            .Where(p => p.CanRead);
 
-        bool firstProp = true;
+        var firstProp = true;
 
         foreach (var prop in props)
         {
             var rawValue  = prop.GetValue(obj);
             var propName  = ConvertName(prop.Name, namingFormat);
-            var propValue = ConvertValue(rawValue, decimals, collectionSeparator, namingFormat);
+            var propValue = ConvertValue(rawValue, decimals, collectionSeparator);
 
             // Check for a property-level format override
             var propFormatAttr = prop.GetCustomAttribute<PropertyFormatAttribute>();
@@ -80,7 +77,6 @@ public static class Stringifier
                 .Replace("{k}", propName)
                 .Replace("{v}", propValue);
 
-            // SingleLine vs. MultiLine
             if (printStyle == PrintStyle.SingleLine)
             {
                 if (!firstProp)
@@ -96,7 +92,7 @@ public static class Stringifier
             }
         }
 
-        return sb.ToString().TrimEnd(); // optional: remove trailing newline/spaces
+        return sb.ToString().TrimEnd();
     }
 
     private static string ConvertName(string name, NamingFormat namingFormat)
@@ -109,25 +105,29 @@ public static class Stringifier
         };
     }
 
-    private static string ConvertValue(
-        object? value,
-        int decimals,
-        string collectionSeparator,
-        NamingFormat namingFormat)
+    private static string ConvertValue(object? value, int decimals, string collectionSeparator)
     {
-        if (value is null) return "null";
-
-        if (value is string s)
-            return s;
-
-        if (value is IEnumerable enumerable && !(value is char))
+        switch (value)
         {
-            var items = new List<string>();
-            foreach (var item in enumerable)
+            case null:
+                return "null";
+            case string s:
+                return s;
+            case IEnumerable enumerable when value is not char:
             {
-                items.Add(ConvertValue(item, decimals, collectionSeparator, namingFormat));
+                var items = new List<string>();
+
+                foreach (var item in enumerable)
+                {
+                    items.Add(ConvertValue(item, decimals, collectionSeparator));
+                }
+                var itemStr = items.Join(collectionSeparator);
+
+                if (collectionSeparator.Contains("\n"))
+                    itemStr = collectionSeparator + itemStr;
+
+                return itemStr;
             }
-            return string.Join(collectionSeparator, items);
         }
 
         var type = value.GetType();
@@ -136,11 +136,6 @@ public static class Stringifier
             return string.Format(CultureInfo.InvariantCulture, $"{{0:F{decimals}}}", value);
         }
 
-        if (type.GetCustomAttribute<StringifyAttribute>() is not null)
-        {
-            return value.Stringify();
-        }
-
-        return value.ToString() ?? string.Empty;
+        return value.Stringify();
     }
 }

@@ -43,7 +43,7 @@ public class StringifyAttribute : Attribute
     /// Number of decimal places to use when printing floating-point properties.
     /// Default = <c>2</c>.
     /// </summary>
-    public int Decimals { get; set; } = 2;
+    public int Decimals { get; set; } = 5;
 
     /// <summary>
     /// Specifies how property names are converted: PascalCase, CamelCase, or SnakeCase.

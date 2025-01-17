@@ -80,4 +80,27 @@ public static class StringExtensions
     public static string KeepDigits(this string str)
         => string.IsNullOrEmpty(str) ? string.Empty : new string(str.Where(char.IsDigit).ToArray());
 
+    /// <summary>
+    /// Check if a string is null or empty.
+    /// </summary>
+    /// <param name="str"></param>
+    /// <returns></returns>
+    public static bool IsNullOrEmpty(this string? str) => string.IsNullOrEmpty(str);
+
+    /// <summary>
+    /// Check if a string is not null or empty.
+    /// </summary>
+    /// <param name="str"></param>
+    /// <returns></returns>
+    public static bool IsNotEmpty(this string? str) => !string.IsNullOrEmpty(str);
+
+    /// <summary>
+    /// Join a sequence
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="separator"></param>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public static string Join<T>(this IEnumerable<T> source, string separator) => string.Join(separator, source);
+
 }

@@ -3,20 +3,23 @@ using TinyString;
 namespace TinyStringTests.Models;
 
 [Stringify(
-    PrintClassName = false,
-    PropertyFormat = "{k} => {v}"
+    PrintStyle = PrintStyle.SingleLine,
+    PrintClassName = true,
+    PropertyFormat = "{k} => {v}",
+    Decimals = 2
 )]
 public class Animal
 {
-    public string Name       { get; set; } = "Mittens";
+    public required string Name { get; set; }
 
     // Now using an enum instead of a string
-    public Species Species   { get; set; } = Species.Cat;
+    public required Species Species { get; set; }
 
-    public double Weight     { get; set; } = 4.5;
-    public bool IsRare       { get; set; } = false;
+    public required double Weight { get; set; }
 
-    // This property uses a property-level format override:
-    [PropertyFormat("[{k} -> {v}]")]
-    public int Age           { get; set; } = 3;
+    [PropertyFormat("{v}yrs")]
+    public int Age { get; set; }
+
+    [PropertyFormat("{k}: {v}")]
+    public bool IsRare { get; set; }
 }
