@@ -22,7 +22,7 @@
     <IncludeSource>true</IncludeSource>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RootNamespace>TinyOptional</RootNamespace>
-	
+	<PackageIcon>logo.png</PackageIcon>
   </PropertyGroup>
 
 
