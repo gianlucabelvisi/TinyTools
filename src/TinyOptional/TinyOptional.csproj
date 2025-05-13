@@ -22,13 +22,14 @@
     <IncludeSource>true</IncludeSource>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RootNamespace>TinyOptional</RootNamespace>
-	<PackageIcon>logo.png</PackageIcon>
+	<PackageIcon>logo_icon.png</PackageIcon>
   </PropertyGroup>
 
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />
     <None Include="logo.png" Pack="true" PackagePath="" />
+    <None Include="logo_icon.png" Pack="true" PackagePath="" />
   </ItemGroup>
 
 </Project>
