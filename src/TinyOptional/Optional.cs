@@ -1,5 +1,5 @@
-// ReSharper disable UnusedMember.Global
 namespace TinyOptional;
+// ReSharper disable UnusedMember.Global
 
 public class Optional<T>
 {

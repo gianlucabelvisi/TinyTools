@@ -1,6 +1,6 @@
+namespace TinyOptional;
 // ReSharper disable UnusedMember.Global
 // ReSharper disable UnusedType.Global
-namespace TinyOptional;
 
 public static class OptionalExtensions
 {
@@ -26,6 +26,78 @@ public static class OptionalExtensions
                     : Optional<T>.Empty();
             }
         }
+    }
+
+    /// <summary>
+    /// Returns an optional containing the element at the specified index, if any
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="index"></param>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public static Optional<T> ElementAtIfExists<T>(this IEnumerable<T>? source, int index)
+    {
+        if (source == null || index < 0)
+        {
+            return Optional<T>.Empty();
+        }
+
+        if (source is IList<T> list)
+        {
+            return index < list.Count ? Optional<T>.Of(list[index]) : Optional<T>.Empty();
+        }
+
+        using var enumerator = source.GetEnumerator();
+        for (var i = 0; i <= index; i++)
+        {
+            if (!enumerator.MoveNext())
+            {
+                return Optional<T>.Empty(); // Index out of range
+            }
+            if (i == index)
+            {
+                return Optional<T>.Of(enumerator.Current);
+            }
+        }
+
+        return Optional<T>.Empty(); // Should not reach here, but added for completeness
+    }
+
+    /// <summary>
+    /// Provides an Optional containing the result of applying an accumulator function over a
+    /// sequence, or an empty Optional
+    /// if the sequence is empty.
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="seed"></param>
+    /// <param name="func"></param>
+    /// <typeparam name="TSource"></typeparam>
+    /// <typeparam name="TAccumulate"></typeparam>
+    /// <returns></returns>
+    public static Optional<TAccumulate> AggregateIfExists<TSource, TAccumulate>(
+        this IEnumerable<TSource>? source, TAccumulate seed,
+        Func<TAccumulate, TSource, TAccumulate>? func)
+    {
+        ArgumentNullException.ThrowIfNull(func);
+
+        if (source == null)
+        {
+            return Optional<TAccumulate>.Empty();
+        }
+
+        using var enumerator = source.GetEnumerator();
+        if (!enumerator.MoveNext())
+        {
+            return Optional<TAccumulate>.Empty();
+        }
+
+        var accumulate = seed;
+        do
+        {
+            accumulate = func(accumulate, enumerator.Current);
+        } while (enumerator.MoveNext());
+
+        return Optional<TAccumulate>.Of(accumulate);
     }
 
     /// <summary>

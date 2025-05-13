@@ -15,7 +15,7 @@
     <Description>A library providing optional/Maybe functionality for .NET</Description>
     <PackageTags>optional maybe monad</PackageTags>
 	<PackageReadmeFile>README.md</PackageReadmeFile>    
-	<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/gianlucabelvisi/TinyTools</PackageProjectUrl>
     <RepositoryUrl>https://github.com/gianlucabelvisi/TinyTools</RepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />
+    <None Include="logo.png" Pack="true" PackagePath="" />
   </ItemGroup>
 
 </Project>
