@@ -1,5 +1,3 @@
-using System;
-
 namespace TinyString;
 
 /// <summary>
@@ -35,18 +33,18 @@ public class StringifyAttribute : Attribute
     /// <summary>
     /// If set, prints this emoji at the start instead of the class name.
     /// If <see cref="PrintClassName"/> is also <c>true</c> but <c>Emoji</c> is specified,
-    /// the emoji takes precedence. Default = <c></c>.
+    /// the emoji takes precedence. Default = <c>""</c>.
     /// </summary>
-    public string? Emoji { get; set; } = "";
+    public string Emoji { get; set; } = "";
 
     /// <summary>
     /// Number of decimal places to use when printing floating-point properties.
-    /// Default = <c>2</c>.
+    /// Default = <c>5</c>.
     /// </summary>
     public int Decimals { get; set; } = 5;
 
     /// <summary>
-    /// Specifies how property names are converted: PascalCase, CamelCase, or SnakeCase.
+    /// Specifies how property names are converted: PascalCase, CamelCase, SnakeCase, etc.
     /// Default = <see cref="NamingFormat.PascalCase"/>.
     /// </summary>
     public NamingFormat NamingFormat { get; set; } = NamingFormat.PascalCase;
@@ -56,7 +54,7 @@ public class StringifyAttribute : Attribute
     /// <c>{k}</c> is replaced by the property name; <c>{v}</c> is replaced by its value.
     /// Default = <c>"{k}: {v}"</c>.
     /// </summary>
-    public string PropertyFormat { get; set; } = "{k}: {v}";
+    public string Format { get; set; } = "{k}: {v}";
 
     /// <summary>
     /// A separator inserted immediately after the class name or emoji when

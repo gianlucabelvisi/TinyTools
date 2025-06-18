@@ -6,7 +6,7 @@ namespace TinyStringTests.Models;
     PrintClassName       = false,
     Emoji                = "🦁🦓🦍",
     PrintStyle           = PrintStyle.MultiLine,
-    PropertyFormat       = "{k}: {v}",
+    Format       = "{k}: {v}",
     PropertySeparator    = "; ",
     CollectionSeparator  = "\n|_ ",
     Decimals = 0

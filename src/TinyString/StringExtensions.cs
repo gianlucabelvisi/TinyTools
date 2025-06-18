@@ -39,6 +39,41 @@ public static class StringExtensions
     }
 
     /// <summary>
+    /// Converts a string to kebab-case.
+    /// </summary>
+    public static string ToKebabCase(this string str)
+    {
+        if (string.IsNullOrEmpty(str)) return str;
+        var snakeCase = str.ToSnakeCase();
+        return snakeCase.Replace('_', '-');
+    }
+
+    /// <summary>
+    /// Converts a string to Human Case with spaces between words.
+    /// </summary>
+    public static string ToHumanCase(this string str)
+    {
+        if (string.IsNullOrEmpty(str)) return str;
+        var sb = new StringBuilder();
+
+        for (int i = 0; i < str.Length; i++)
+        {
+            char c = str[i];
+
+            // Add space before uppercase letters if not the first character
+            // and the previous character is not already a space
+            if (i > 0 && char.IsUpper(c) && !char.IsWhiteSpace(str[i - 1]))
+            {
+                sb.Append(' ');
+            }
+
+            sb.Append(c);
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Simple Slug conversion: remove non-alphanumeric characters and lowercase everything.
     /// </summary>
     /// <param name="str"></param>

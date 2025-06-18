@@ -1,0 +1,50 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Read file: README.md
+
+Read file: src/TinyOptional/README.md
+
+Ran tool
+
+Read file: src/TinyString/NamingFormat.cs
+
+Read file: src/TinyString/StringifyAttribute.cs
+
+Read file: src/TinyString/StringifyIgnoreAttribute.cs
+
+Read file: src/TinyString/StringifyPropertyAttribute.cs
+
+Read file: src/TinyString/StringExtensions.cs
+
+Read file: src/TinyString/Stringifier.cs
+
+Read file: src/TinyString/PrintStyle.cs
+
+Read file: test/TinyStringTests/Models/Animal.cs
+
+Read file: test/TinyStringTests/Models/Species.cs
+
+Read file: test/TinyStringTests/Models/Zoo.cs
+
+Read file: test/TinyStringTests/StringifyTests.cs
+
+Tiny Tools is a grab-bag of lightweight, self-contained .NET utilities that you can drop into any C# solution.
+
+1. Tiny Optional  
+   • Implements an `Optional<T>` (a.k.a. Maybe) value type.  
+   • Gives you `Of/OfNullable/Empty`, `IsPresent`, `Get`, `OrElse(…)`, `OrElseThrow(…)`, LINQ-friendly `Where/Select/SelectMany`, and convenience helpers for collections and strings.  
+   • Lets you write null-free, fluent code that makes the “value might be absent” case explicit.  
+   • Lives in `src/TinyOptional` with its own tests in `test/TinyOptionalTests`.
+   
+2. Tiny String  
+   • Adds small but handy string helpers: case converters (`ToCamelCase`, `ToSnakeCase`, `ToKebabCase`, `ToHumanCase`), slugging, digit utilities, safe joins, etc.  
+   • Provides a flexible object pretty-printer via the `Stringify()` extension method.  
+        – Decorate a class with `[Stringify]` to control single- vs multi-line output, name formatting, separators, emojis, decimal precision, etc.  
+        – Fine-tune individual properties with `[StringifyProperty]` or opt-out with `[StringifyIgnore]`.  
+   • Example (see `test/TinyStringTests`): a `Zoo` object prints itself as a neat multi-line block with an emoji header and nested `Animal` objects printed inline.  
+   • Code sits in `src/TinyString` with matching NUnit tests.
+
+The solution file `TinyTools.sln` ties the two libraries and their test projects together. Future small utilities can be added alongside them—the top-level `README.md` hints “More projects to come.”

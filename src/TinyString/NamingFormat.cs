@@ -4,5 +4,7 @@ public enum NamingFormat
 {
     CamelCase,
     PascalCase,
-    SnakeCase
+    SnakeCase,
+    KebabCase,
+    HumanCase
 }

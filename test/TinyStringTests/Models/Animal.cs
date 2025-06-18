@@ -5,21 +5,20 @@ namespace TinyStringTests.Models;
 [Stringify(
     PrintStyle = PrintStyle.SingleLine,
     PrintClassName = true,
-    PropertyFormat = "{k} => {v}",
+    Format = "{k} => {v}",
     Decimals = 2
 )]
 public class Animal
 {
     public required string Name { get; set; }
 
-    // Now using an enum instead of a string
     public required Species Species { get; set; }
 
     public required double Weight { get; set; }
 
-    [PropertyFormat("{v}yrs")]
+    [StringifyProperty(format:"{v}yrs")]
     public int Age { get; set; }
 
-    [PropertyFormat("{k}: {v}")]
+    [StringifyProperty(format: "{k}: {v}")]
     public bool IsRare { get; set; }
 }
