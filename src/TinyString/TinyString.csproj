@@ -6,14 +6,15 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <NuGetAudit>false</NuGetAudit>
 	
     <!-- NuGet package metadata -->
     <PackageId>TinyString</PackageId>
     <Version>$(ProjectVersion)</Version>
     <Authors>Gianluca Belvisi</Authors>
     <Company>gianlucabelvisi.com</Company>
-    <Description>Lightweight string helpers and pretty-printer utilities for .NET</Description>
-    <PackageTags>string extensions stringify case-conversion slug pretty-print</PackageTags>
+    <Description>Lightweight pretty-printer utilities for .NET</Description>
+    <PackageTags>string extensions stringify smart tostring pretty-print</PackageTags>
     <PackageIcon>logo_icon.png</PackageIcon>
 	<PackageReadmeFile>README.md</PackageReadmeFile>    
 	<PackageLicenseExpression>MIT</PackageLicenseExpression>

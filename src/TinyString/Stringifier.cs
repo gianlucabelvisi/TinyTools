@@ -13,7 +13,7 @@ public static class Stringifier
 
         var objType = obj.GetType();
 
-        // Get the attribute (if present) or create a default one
+        // Get the class attribute (if present) or create a default one
         var classAttr = objType.GetCustomAttribute<StringifyAttribute>() ?? new StringifyAttribute();
 
         var sb = new StringBuilder();
@@ -57,7 +57,7 @@ public static class Stringifier
             var propAttr = prop.GetCustomAttribute<StringifyPropertyAttribute>();
 
             // Determine property-specific settings
-            var propFormat = propAttr?.Format ?? classAttr.Format;
+            var propFormat = propAttr?.Format ?? classAttr.PropertyFormat;
             var propCollectionSeparator = propAttr?.CollectionSeparator ?? classAttr.CollectionSeparator;
             var propDecimals = propAttr?.Decimals ?? classAttr.Decimals;
 
@@ -105,6 +105,26 @@ public static class Stringifier
                 return "null";
             case string s:
                 return s;
+            case bool b:
+                return b.ToString();
+            case Enum e:
+                return e.ToString();
+            case int i:
+                return i.ToString();
+            case long l:
+                return l.ToString();
+            case short s:
+                return s.ToString();
+            case byte b:
+                return b.ToString();
+            case uint ui:
+                return ui.ToString();
+            case ulong ul:
+                return ul.ToString();
+            case ushort us:
+                return us.ToString();
+            case sbyte sb:
+                return sb.ToString();
             case IEnumerable enumerable when value is not string:
             {
                 var items = new List<string>();
@@ -139,8 +159,8 @@ public static class Stringifier
                     return name ?? value.ToString() ?? string.Empty;
                 }
 
-                // For other class types, call ToString()
-                return value.ToString() ?? string.Empty;
+                // For other class types, call Stringify() recursively
+                return value.Stringify() ?? string.Empty;
         }
     }
 
