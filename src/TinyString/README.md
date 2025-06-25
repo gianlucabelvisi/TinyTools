@@ -1,6 +1,6 @@
 # Tiny String: Small but Mighty String Utilities for .NET
 
-![Logo](https://raw.githubusercontent.com/gianlucabelvisi/TinyTools/main/src/TinyString/logo.png)
+![Logo](https://raw.githubusercontent.com/gianlucabelvisi/TinyTools/main/src/TinyString/logo_icon.png)
 
 **TinyString** is a powerful, attribute-driven object pretty-printer for .NET.  
 Drop it into any C# project to get beautiful, customizable string representations of your objects.

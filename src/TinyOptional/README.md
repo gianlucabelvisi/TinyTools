@@ -1,6 +1,6 @@
 # Tiny Optional: A Lightweight C# Optional Type
 
-![Logo](https://raw.githubusercontent.com/gianlucabelvisi/TinyTools/main/src/TinyOptional/logo.png)
+![Logo](https://raw.githubusercontent.com/gianlucabelvisi/TinyTools/main/src/TinyOptional/logo_icon.png)
 
 This library provides a simple **Optional** (a.k.a. “Maybe”) type for C#. It allows you to express the presence or absence of a value without resorting to `null`. If an `Optional<T>` has a value, you can safely work with that value; if it doesn’t, the library’s methods help gracefully handle the “no value” scenario.
 
