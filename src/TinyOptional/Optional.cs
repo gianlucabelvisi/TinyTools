@@ -1,7 +1,7 @@
 namespace TinyOptional;
 // ReSharper disable UnusedMember.Global
 
-public class Optional<T>
+public class Optional<T> : IEquatable<Optional<T>>
 {
     private readonly T? _value;
     private readonly bool _hasValue;
@@ -15,8 +15,6 @@ public class Optional<T>
     /// <summary>
     /// Box a non-null value into an Optional.
     /// </summary>
-    /// <param name="value"></param>
-    /// <returns></returns>
     /// <exception cref="ArgumentNullException"></exception>
     public static Optional<T> Of(T? value)
     {
@@ -25,10 +23,8 @@ public class Optional<T>
     }
 
     /// <summary>
-    /// Box a nullable value into an Optional.
+    /// Box a nullable value into an Optional. Returns empty if value is null.
     /// </summary>
-    /// <param name="value"></param>
-    /// <returns></returns>
     public static Optional<T> OfNullable(T? value)
     {
         return new Optional<T>(value, value != null);
@@ -37,7 +33,6 @@ public class Optional<T>
     /// <summary>
     /// Returns an empty Optional.
     /// </summary>
-    /// <returns></returns>
     public static Optional<T> Empty()
     {
         return new Optional<T>(default, false);
@@ -46,20 +41,16 @@ public class Optional<T>
     /// <summary>
     /// Returns true if a value is present, false otherwise.
     /// </summary>
-    /// <returns></returns>
     public bool IsPresent() => _hasValue;
 
     /// <summary>
-    /// Returns true if a value is not present, false otherwise.
+    /// Returns true if no value is present, false otherwise.
     /// </summary>
-    /// <returns></returns>
     public bool IsNotPresent() => !_hasValue;
-
 
     /// <summary>
     /// Returns the value if present, otherwise throws an InvalidOperationException.
     /// </summary>
-    /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
     public T Get()
     {
@@ -68,11 +59,8 @@ public class Optional<T>
     }
 
     /// <summary>
-    /// Returns the value if present, otherwise throws an exception supplied by <paramref name="exceptionSupplier"/>.
+    /// Returns the value if present, otherwise throws the exception supplied by <paramref name="exceptionSupplier"/>.
     /// </summary>
-    /// <param name="exceptionSupplier"></param>
-    /// <returns></returns>
-    /// <exception cref="Exception"></exception>
     public T GetOrThrow(Func<Exception> exceptionSupplier)
     {
         if (_hasValue) return _value!;
@@ -82,8 +70,6 @@ public class Optional<T>
     /// <summary>
     /// Returns the value if present, otherwise returns <paramref name="other"/>.
     /// </summary>
-    /// <param name="other"></param>
-    /// <returns></returns>
     public T OrElse(T other)
     {
         return _hasValue ? _value! : other;
@@ -92,29 +78,27 @@ public class Optional<T>
     /// <summary>
     /// Returns the value if present, otherwise returns the result of <paramref name="other"/>.
     /// </summary>
-    /// <param name="other"></param>
-    /// <returns></returns>
     public T OrElseGet(Func<T> other)
     {
         return _hasValue ? _value! : other();
     }
 
     /// <summary>
-    /// Returns the value if present, otherwise executes <paramref name="other"/>.
+    /// Returns the value if present, otherwise returns null.
     /// </summary>
-    /// <param name="other"></param>
-    /// <returns></returns>
-    public T OrElseDo(Action other)
+    public T? OrElseNull() => _hasValue ? _value : default;
+
+    /// <summary>
+    /// Executes <paramref name="other"/> if no value is present.
+    /// </summary>
+    public void OrElseDo(Action other)
     {
         if (!_hasValue) other.Invoke();
-        return _value!;
     }
 
     /// <summary>
     /// Apply the where clause to potentially empty the Optional.
     /// </summary>
-    /// <param name="predicate"></param>
-    /// <returns></returns>
     public Optional<T> Where(Func<T, bool> predicate)
     {
         if (!_hasValue) return this;
@@ -122,21 +106,59 @@ public class Optional<T>
     }
 
     /// <summary>
+    /// Apply an async predicate to potentially empty the Optional.
+    /// </summary>
+    public async Task<Optional<T>> WhereAsync(Func<T, Task<bool>> predicate)
+    {
+        if (!_hasValue) return this;
+        return await predicate(_value!) ? this : Empty();
+    }
+
+    /// <summary>
     /// Transform the value if present and box it, otherwise return an empty Optional.
     /// </summary>
-    /// <param name="mapper"></param>
-    /// <typeparam name="TResult"></typeparam>
-    /// <returns></returns>
     public Optional<TResult> Select<TResult>(Func<T, TResult> mapper)
     {
         return !_hasValue ? Optional<TResult>.Empty() : Optional<TResult>.Of(mapper(_value!));
     }
 
     /// <summary>
+    /// Asynchronously transform the value if present and box it, otherwise return an empty Optional.
+    /// </summary>
+    public async Task<Optional<TResult>> SelectAsync<TResult>(Func<T, Task<TResult>> mapper)
+    {
+        return !_hasValue ? Optional<TResult>.Empty() : Optional<TResult>.Of(await mapper(_value!));
+    }
+
+    /// <summary>
+    /// Transform the value into another Optional and flatten, avoiding double-wrapping.
+    /// Returns empty if this Optional is empty or if the mapper returns empty.
+    /// </summary>
+    public Optional<TResult> SelectMany<TResult>(Func<T, Optional<TResult>> mapper)
+    {
+        return !_hasValue ? Optional<TResult>.Empty() : mapper(_value!);
+    }
+
+    /// <summary>
+    /// Collapse the Optional to a single value by providing handlers for both cases.
+    /// </summary>
+    public TResult Match<TResult>(Func<T, TResult> onPresent, Func<TResult> onEmpty)
+    {
+        return _hasValue ? onPresent(_value!) : onEmpty();
+    }
+
+    /// <summary>
+    /// Returns an IEnumerable with one element if present, or empty if not.
+    /// Integrates cleanly with LINQ.
+    /// </summary>
+    public IEnumerable<T> ToEnumerable()
+    {
+        if (_hasValue) yield return _value!;
+    }
+
+    /// <summary>
     /// Execute the action if a value is present.
     /// </summary>
-    /// <param name="action"></param>
-    /// <returns></returns>
     public OptionalIfPresentResult<T> IfPresent(Action<T> action)
     {
         if (_hasValue) action(_value!);
@@ -146,17 +168,14 @@ public class Optional<T>
     /// <summary>
     /// Execute the async action if a value is present.
     /// </summary>
-    /// <param name="action"></param>
     public async Task IfPresentAsync(Func<T, Task> action)
     {
         if (_hasValue) await action(_value!);
     }
 
     /// <summary>
-    /// Execute the action if a value is not present.
+    /// Execute the action if no value is present.
     /// </summary>
-    /// <param name="action"></param>
-    /// <returns></returns>
     public OptionalIfNotPresentResult<T> IfNotPresent(Action action)
     {
         if (!_hasValue) action();
@@ -164,9 +183,8 @@ public class Optional<T>
     }
 
     /// <summary>
-    /// Execute the async action if a value is not present.
+    /// Execute the async action if no value is present.
     /// </summary>
-    /// <param name="asyncAction"></param>
     public async Task IfNotPresentAsync(Func<Task> asyncAction)
     {
         if (!_hasValue) await asyncAction();
@@ -177,6 +195,20 @@ public class Optional<T>
         return _hasValue ? _value?.ToString() ?? "" : "Empty";
     }
 
+    public bool Equals(Optional<T>? other)
+    {
+        if (other is null) return false;
+        if (!_hasValue && !other._hasValue) return true;
+        if (_hasValue != other._hasValue) return false;
+        return EqualityComparer<T>.Default.Equals(_value!, other._value!);
+    }
+
+    public override bool Equals(object? obj) => obj is Optional<T> other && Equals(other);
+
+    public override int GetHashCode() => _hasValue ? EqualityComparer<T>.Default.GetHashCode(_value!) : 0;
+
+    public static bool operator ==(Optional<T> left, Optional<T> right) => left.Equals(right);
+    public static bool operator !=(Optional<T> left, Optional<T> right) => !left.Equals(right);
 }
 
 public class OptionalIfPresentResult<T>(Optional<T> optional)

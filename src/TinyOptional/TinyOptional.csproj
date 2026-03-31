@@ -1,30 +1,31 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="Version.props" Condition="Exists('Version.props')" />
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-  
+    <NuGetAudit>false</NuGetAudit>
+
     <!-- NuGet package metadata -->
     <PackageId>TinyOptional</PackageId>
     <Version>$(ProjectVersion)</Version>
     <Authors>Gianluca Belvisi</Authors>
     <Company>gianlucabelvisi.com</Company>
-    <Description>A library providing optional/Maybe functionality for .NET</Description>
-    <PackageTags>optional maybe monad</PackageTags>
-	<PackageReadmeFile>README.md</PackageReadmeFile>    
-	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>A lightweight Optional/Maybe type for .NET — express presence or absence without null.</Description>
+    <PackageTags>optional maybe monad functional nullable</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/gianlucabelvisi/TinyTools</PackageProjectUrl>
     <RepositoryUrl>https://github.com/gianlucabelvisi/TinyTools</RepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
-    <IncludeSource>true</IncludeSource>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RootNamespace>TinyOptional</RootNamespace>
-	<PackageIcon>logo_icon.png</PackageIcon>
+    <PackageIcon>logo_icon.png</PackageIcon>
   </PropertyGroup>
-
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />

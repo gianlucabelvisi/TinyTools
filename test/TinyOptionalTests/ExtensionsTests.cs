@@ -227,4 +227,47 @@ public class ExtensionsTests
         result.IsPresent().Should().BeTrue();
         result.Get().Should().Be("test");
     }
+
+    [Test]
+    public void SingleIfExists_WithNullSource_ReturnsEmpty()
+    {
+        IEnumerable<int>? source = null;
+        source.SingleIfExists().IsNotPresent().Should().BeTrue();
+    }
+
+    [Test]
+    public void SingleIfExists_WithEmptySource_ReturnsEmpty()
+    {
+        new List<int>().SingleIfExists().IsNotPresent().Should().BeTrue();
+    }
+
+    [Test]
+    public void SingleIfExists_WithOneElement_ReturnsOptionalWithValue()
+    {
+        new List<int> { 42 }.SingleIfExists().Get().Should().Be(42);
+    }
+
+    [Test]
+    public void SingleIfExists_WithMultipleElements_ReturnsEmpty()
+    {
+        new List<int> { 1, 2 }.SingleIfExists().IsNotPresent().Should().BeTrue();
+    }
+
+    [Test]
+    public void SingleIfExists_WithPredicate_WithOneMatch_ReturnsOptionalWithValue()
+    {
+        new List<int> { 1, 2, 3 }.SingleIfExists(x => x > 2).Get().Should().Be(3);
+    }
+
+    [Test]
+    public void SingleIfExists_WithPredicate_WithNoMatch_ReturnsEmpty()
+    {
+        new List<int> { 1, 2, 3 }.SingleIfExists(x => x > 10).IsNotPresent().Should().BeTrue();
+    }
+
+    [Test]
+    public void SingleIfExists_WithPredicate_WithMultipleMatches_ReturnsEmpty()
+    {
+        new List<int> { 1, 2, 3 }.SingleIfExists(x => x > 1).IsNotPresent().Should().BeTrue();
+    }
 }
