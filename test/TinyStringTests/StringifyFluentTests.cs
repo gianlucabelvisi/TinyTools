@@ -260,10 +260,54 @@ public class StringifyFluentTests
         result.Should().Be("Mittens (Cat) 4.50kg 5yrs");
     }
 
-    // ── MultiLine + Label + collection separator ────────────────────────────
+    // ── Default collection rendering by style ──────────────────────────────
 
     [Test]
-    public void Zoo_MultiLine_WithLabelAndCollectionSeparator()
+    public void SingleLine_Collection_DefaultsToComma()
+    {
+        var zoo = new Zoo
+        {
+            Name = "City Zoo",
+            EntrancePrice = 10,
+            Animals =
+            [
+                new Animal { Name = "Mittens", Species = "Cat",  Weight = 4.5,   Age = 5, IsRare = false },
+                new Animal { Name = "Tony",    Species = "Tiger", Weight = 120.3, Age = 6, IsRare = true  },
+            ]
+        };
+
+        var result = zoo.Stringify(o => o.NoLabel().For(x => x.EntrancePrice).Ignore());
+
+        // Items joined with ", " — no |_ prefix in single-line mode
+        result.Should().Contain("Animals: ");
+        result.Should().NotContain("|_");
+    }
+
+    [Test]
+    public void MultiLine_Collection_DefaultsToListPrefix()
+    {
+        var zoo = new Zoo
+        {
+            Name = "Wonderful Zoo",
+            EntrancePrice = 14.99,
+            Animals =
+            [
+                new Animal { Name = "Mittens", Species = "Cat",     Weight = 4.5,   Age = 5,  IsRare = false },
+                new Animal { Name = "Tony",    Species = "Tiger",    Weight = 120.3, Age = 6,  IsRare = true  },
+                new Animal { Name = "Dumbo",   Species = "Elephant", Weight = 500.1, Age = 10, IsRare = false },
+            ]
+        };
+
+        // No .For(x => x.Animals) needed — |_ is the automatic default in multi-line mode
+        var result = zoo.Stringify(o => o.MultiLine());
+
+        result.Should().Contain("|_ ");
+        var lines = result!.Split('\n');
+        lines.Count(l => l.StartsWith("|_ ")).Should().Be(3);
+    }
+
+    [Test]
+    public void Zoo_MultiLine_WithLabel()
     {
         var zoo = new Zoo
         {
@@ -280,8 +324,7 @@ public class StringifyFluentTests
         var result = zoo.Stringify(o => o
             .MultiLine()
             .Label("🦁🦓🦍 Zoo")
-            .For(x => x.EntrancePrice).Prefix("$").Decimals(0)
-            .For(x => x.Animals).Separator("\n|_ "));
+            .For(x => x.EntrancePrice).Prefix("$").Decimals(0));
 
         result.Should().StartWith("🦁🦓🦍 Zoo");
         result.Should().Contain("Name: Wonderful Zoo");

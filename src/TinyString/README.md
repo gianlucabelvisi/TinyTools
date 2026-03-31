@@ -2,11 +2,7 @@
 
 ![Logo](https://raw.githubusercontent.com/gianlucabelvisi/TinyTools/main/src/TinyString/logo_icon.png)
 
-**TinyString** is a lightweight .NET library that turns any object into a readable string — with zero boilerplate for simple cases and a clean fluent API when you need more control.
-
----
-
-## Installation
+Turn any .NET object into a readable string. Zero config for simple cases, a clean fluent API when you want more.
 
 ```bash
 dotnet add package TinyString
@@ -14,9 +10,9 @@ dotnet add package TinyString
 
 ---
 
-## Quick Start
+## Zero config
 
-Call `.Stringify()` on any object and get a sensible result with no configuration:
+Call `.Stringify()` on anything:
 
 ```csharp
 using TinyString;
@@ -26,27 +22,19 @@ book.Stringify();
 // → "Book. Title: 1984, Author: George Orwell, Pages: 328"
 ```
 
-Public properties are printed in declaration order. The class name is used as the header, separated by `". "`. Floats default to 2 decimal places.
+All public properties, declaration order, class name as header, floats at 2 decimal places. No setup required.
 
 ---
 
 ## Fluent API
 
-Pass a configuration action to `Stringify()` to customise the output at the call site — no attributes needed on your classes:
+Pass a configuration action when you need more control. Everything lives at the call site — your classes stay clean:
 
 ```csharp
-var zoo = new Zoo
-{
-    Name = "Woodland Zoo",
-    EntrancePrice = 14.99,
-    Animals = [ new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5 }, ... ]
-};
-
 zoo.Stringify(o => o
     .MultiLine()
     .Label("🦁 Zoo")
-    .For(x => x.EntrancePrice).Prefix("$").Decimals(0)
-    .For(x => x.Animals).Separator("\n|_ "));
+    .For(x => x.EntrancePrice).Prefix("$").Decimals(0));
 ```
 
 ```
@@ -58,92 +46,29 @@ Animals:
 |_ Animal. Name: Tony, Species: Tiger, Weight: 120.30
 ```
 
+In multi-line mode, collections are automatically rendered with `|_ ` per item. In single-line mode they're joined with `", "`. No extra configuration needed.
+
 ---
 
-## Global Options
+## Options
 
-| Method | Description | Default |
+### Global
+
+| Method | What it does | Default |
 |---|---|---|
-| `.MultiLine()` | One property per line | — |
-| `.SingleLine()` | All on one line | ✓ |
-| `.Label("text")` | Override the class name header | Class name |
-| `.NoLabel()` | Hide the header | — |
-| `.Separator("…")` | Between properties (single-line) | `", "` |
-| `.CollectionSeparator("…")` | Between collection items (all properties) | `"; "` |
+| `.MultiLine()` / `.SingleLine()` | Layout style | single-line |
+| `.Label("…")` | Replace the class name header | class name |
+| `.NoLabel()` | Hide the header entirely | — |
+| `.Separator("…")` | Between properties in single-line | `", "` |
+| `.CollectionSeparator("…")` | Override the auto collection separator | auto |
 | `.Decimals(n)` | Decimal places for floats | `2` |
 | `.Keys(NamingFormat.X)` | Key naming style | `PascalCase` |
 
----
+Available naming formats: `PascalCase`, `CamelCase`, `SnakeCase`, `KebabCase`, `HumanCase`.
 
-## Per-Property Options
+### Per property
 
-Start a property chain with `.For(x => x.Property)`:
-
-| Method | Description |
-|---|---|
-| `.Ignore()` | Exclude this property entirely |
-| `.As("label")` | Override the display name of the key |
-| `.NoKey()` | Show only the value, no key |
-| `.Prefix("…")` | Prepend text before the value |
-| `.Suffix("…")` | Append text after the value |
-| `.Separator("…")` | Collection separator for this property |
-| `.Decimals(n)` | Decimal places for this property |
-
-Continuing with `.For()` at the end of any property chain moves to the next property, so the whole configuration reads as one fluent expression:
-
-```csharp
-order.Stringify(o => o
-    .NoLabel()
-    .Separator(" | ")
-    .For(x => x.Price).Prefix("$").Decimals(2)
-    .For(x => x.Discount).Suffix("%").NoKey()
-    .For(x => x.InternalId).Ignore());
-```
-
----
-
-## Naming Formats
-
-| Format | Example |
-|---|---|
-| `PascalCase` (default) | `FirstName` |
-| `CamelCase` | `firstName` |
-| `SnakeCase` | `first_name` |
-| `KebabCase` | `first-name` |
-| `HumanCase` | `First Name` |
-
-```csharp
-item.Stringify(o => o.Keys(NamingFormat.HumanCase));
-// → "Item. First Name: Ada, Is Active: True"
-```
-
----
-
-## Nested Objects & Collections
-
-Nested objects are stringified automatically using their own defaults (or their own `.Stringify()` call, if any):
-
-```csharp
-var order = new Order
-{
-    Product = new Product { Name = "Book", Price = 12.99 },
-    Qty = 2
-};
-
-order.Stringify();
-// → "Order. Product: Product. Name: Book, Price: 12.99, Qty: 2"
-```
-
-Collections are joined with the active separator:
-
-```csharp
-order.Stringify(o => o.For(x => x.Tags).Separator(" · "));
-// → "Order. Tags: sci-fi · classic · dystopian, ..."
-```
-
----
-
-## Full Example: Animal Compact Format
+Chain `.For(x => x.Prop)` to configure a specific property, then keep chaining `.For()` to move to the next one:
 
 ```csharp
 animal.Stringify(o => o
@@ -154,33 +79,36 @@ animal.Stringify(o => o
     .For(x => x.Weight).NoKey().Suffix("kg").Decimals(2)
     .For(x => x.Age).NoKey().Suffix("yrs")
     .For(x => x.IsRare).Ignore());
-
 // → "Mittens (Cat) 4.50kg 5yrs"
 ```
 
+| Method | What it does |
+|---|---|
+| `.Ignore()` | Exclude this property |
+| `.As("…")` | Rename the key |
+| `.NoKey()` | Show only the value |
+| `.Prefix("…")` / `.Suffix("…")` | Wrap the value |
+| `.Separator("…")` | Collection separator for this property |
+| `.Decimals(n)` | Decimal places for this property |
+
 ---
 
-## Legacy Attribute API (Deprecated)
+## Nested objects
 
-Previous versions used attributes to configure stringification. These still work but will produce deprecation warnings and will be removed in a future major version.
+Nested objects are stringified automatically using their own defaults:
 
 ```csharp
-// ⚠️ Deprecated
-[Stringify(PrintStyle = PrintStyle.MultiLine, Emoji = "🦁")]
-public class Zoo
-{
-    [StringifyProperty(format: "${v}")]
-    public double EntrancePrice { get; set; }
-
-    [StringifyIgnore]
-    public string InternalCode { get; set; } = "";
-}
+var order = new Order { Product = new Product { Name = "Book", Price = 12.99 }, Qty = 2 };
+order.Stringify();
+// → "Order. Product: Product. Name: Book, Price: 12.99, Qty: 2"
 ```
-
-Migrate by moving the configuration to the `.Stringify(o => o…)` call site instead.
 
 ---
 
-## License
+## Migrating from the attribute API
 
-TinyString is licensed under the MIT License.
+Previous versions configured stringification via `[Stringify]`, `[StringifyProperty]`, and `[StringifyIgnore]` attributes. These still work but are deprecated and will be removed in a future major version. Move the configuration to the `.Stringify()` call site instead.
+
+---
+
+MIT License

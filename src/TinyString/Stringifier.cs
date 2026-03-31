@@ -58,7 +58,9 @@ public static class Stringifier
             var prefix   = cfg?.Prefix ?? "";
             var suffix   = cfg?.Suffix ?? "";
             var decimals = cfg?.Decimals ?? opts._decimals;
-            var collSep  = cfg?.CollectionSeparator ?? opts._collectionSeparator;
+            var collSep  = cfg?.CollectionSeparator
+                        ?? opts._collectionSeparator
+                        ?? (opts._style == PrintStyle.MultiLine ? "\n|_ " : ", ");
 
             var value    = prop.GetValue(obj);
             var rendered = prefix + ConvertValue(value, decimals, collSep) + suffix;

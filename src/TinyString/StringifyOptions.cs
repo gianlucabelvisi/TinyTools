@@ -14,7 +14,7 @@ public sealed class StringifyOptions<T>
     internal string? _header;
     internal bool _showHeader = true;
     internal string _separator = ", ";
-    internal string _collectionSeparator = "; ";
+    internal string? _collectionSeparator; // null = auto (", " single-line / "\n|_ " multi-line)
     internal int _decimals = 2;
     internal NamingFormat _namingFormat = NamingFormat.PascalCase;
 
@@ -39,7 +39,10 @@ public sealed class StringifyOptions<T>
     /// <summary>Separator between properties in single-line mode. Default: <c>", "</c>.</summary>
     public StringifyOptions<T> Separator(string separator) { _separator = separator; return this; }
 
-    /// <summary>Default separator between items in collection properties. Default: <c>"; "</c>.</summary>
+    /// <summary>
+    /// Override the default separator between collection items.
+    /// By default: <c>", "</c> in single-line mode, <c>"\n|_ "</c> in multi-line mode.
+    /// </summary>
     public StringifyOptions<T> CollectionSeparator(string separator) { _collectionSeparator = separator; return this; }
 
     /// <summary>Default number of decimal places for floating-point values. Default: <c>2</c>.</summary>
