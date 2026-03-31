@@ -5,6 +5,13 @@ using System.Text;
 
 namespace TinyString;
 
+// Bundles the context that flows through the recursive rendering calls.
+internal sealed record RenderContext(
+    int Decimals,
+    string CollectionSeparator,
+    string NullToken,
+    IReadOnlyDictionary<Type, Func<object, string>>? NestedRenderers);
+
 public static class Stringifier
 {
     // ── New fluent API ──────────────────────────────────────────────────────
@@ -28,7 +35,7 @@ public static class Stringifier
         return StringifyWithOptions(obj, options);
     }
 
-    private static string StringifyWithOptions<T>(T obj, StringifyOptions<T> opts)
+    internal static string StringifyWithOptions<T>(T obj, StringifyOptions<T> opts)
     {
         var type = typeof(T);
         var sb = new StringBuilder();
@@ -51,7 +58,17 @@ public static class Stringifier
         foreach (var prop in props)
         {
             opts._properties.TryGetValue(prop.Name, out var cfg);
+
+            // Explicit ignore
             if (cfg?.Ignored == true) continue;
+
+            // Only whitelist
+            if (opts._only != null && !opts._only.Contains(prop.Name)) continue;
+
+            var rawValue = prop.GetValue(obj);
+
+            // Conditional display
+            if (cfg?.ShowWhen != null && !cfg.ShowWhen(rawValue)) continue;
 
             var keyName  = ConvertName(cfg?.Label ?? prop.Name, opts._namingFormat);
             var showKey  = cfg?.ShowKey ?? true;
@@ -62,8 +79,19 @@ public static class Stringifier
                         ?? opts._collectionSeparator
                         ?? (opts._style == PrintStyle.MultiLine ? "\n|_ " : ", ");
 
-            var value    = prop.GetValue(obj);
-            var rendered = prefix + ConvertValue(value, decimals, collSep) + suffix;
+            // Value conversion — custom formatter takes full control when set
+            string convertedValue;
+            if (cfg?.ValueFormatter != null)
+            {
+                convertedValue = cfg.ValueFormatter(rawValue);
+            }
+            else
+            {
+                var ctx = new RenderContext(decimals, collSep, opts._nullToken, opts._nestedRenderers);
+                convertedValue = ConvertValue(rawValue, ctx, cfg?.MaxItems);
+            }
+
+            var rendered = prefix + convertedValue + suffix;
             var line     = showKey ? $"{keyName}: {rendered}" : rendered;
 
             if (opts._style == PrintStyle.SingleLine)
@@ -99,7 +127,7 @@ public static class Stringifier
     public static string? Stringify(this object? obj) =>
         obj is null ? null : StringifyLegacy(obj);
 
-    // Called internally (no obsolete warning) for legacy-attribute objects and nested objects.
+    // Called internally (no obsolete warning) for legacy-attribute objects and nested fallback.
     internal static string StringifyLegacy(object obj)
     {
         var type      = obj.GetType();
@@ -138,7 +166,8 @@ public static class Stringifier
             var decimals  = propAttr?.Decimals ?? classAttr.Decimals;
 
             var value     = prop.GetValue(obj);
-            var converted = ConvertValue(value, decimals, collSep);
+            var ctx       = new RenderContext(decimals, collSep, "null", null);
+            var converted = ConvertValue(value, ctx);
             var line      = format.Replace("{k}", propName).Replace("{v}", converted);
 
             if (classAttr.PrintStyle == PrintStyle.SingleLine)
@@ -176,10 +205,10 @@ public static class Stringifier
         _                       => name,
     };
 
-    internal static string ConvertValue(object? value, int decimals, string collectionSeparator) =>
+    internal static string ConvertValue(object? value, RenderContext ctx, int? maxItems = null) =>
         value switch
         {
-            null                    => "null",
+            null                    => ctx.NullToken,
             string s                => s,
             bool b                  => b.ToString(),
             Enum e                  => e.ToString(),
@@ -187,25 +216,68 @@ public static class Stringifier
                 or byte or uint
                 or ulong or ushort
                 or sbyte            => value.ToString()!,
-            IEnumerable enumerable  => ConvertCollection(enumerable, decimals, collectionSeparator),
-            float f                 => f.ToString($"F{decimals}", CultureInfo.InvariantCulture),
-            double d                => d.ToString($"F{decimals}", CultureInfo.InvariantCulture),
-            decimal m               => m.ToString($"F{decimals}", CultureInfo.InvariantCulture),
-            _                       => TrySmartEnum(value) ?? StringifyLegacy(value),
+            IEnumerable enumerable  => ConvertCollection(enumerable, ctx, maxItems),
+            float f                 => f.ToString($"F{ctx.Decimals}", CultureInfo.InvariantCulture),
+            double d                => d.ToString($"F{ctx.Decimals}", CultureInfo.InvariantCulture),
+            decimal m               => m.ToString($"F{ctx.Decimals}", CultureInfo.InvariantCulture),
+            _                       => ConvertComplex(value, ctx.NestedRenderers),
         };
 
-    private static string ConvertCollection(IEnumerable enumerable, int decimals, string separator)
+    private static string ConvertComplex(object value, IReadOnlyDictionary<Type, Func<object, string>>? nestedRenderers)
     {
-        var items  = enumerable.Cast<object?>().Select(i => ConvertValue(i, decimals, separator));
-        var joined = string.Join(separator, items);
-        // If the separator starts with a newline the caller wants it also before the first item.
-        return separator.Contains('\n') ? separator + joined : joined;
+        // 1. Registered ForNested renderer
+        if (nestedRenderers != null && nestedRenderers.TryGetValue(value.GetType(), out var renderer))
+            return renderer(value);
+
+        // 2. SmartEnum heuristic
+        var smartEnum = TrySmartEnum(value);
+        if (smartEnum != null) return smartEnum;
+
+        // 3. Overridden ToString() — if the type provides its own, respect it
+        if (value.GetType().GetMethod("ToString", Type.EmptyTypes)?.DeclaringType != typeof(object))
+            return value.ToString()!;
+
+        // 4. Reflect over the object with legacy defaults
+        return StringifyLegacy(value);
+    }
+
+    private static string ConvertCollection(IEnumerable enumerable, RenderContext ctx, int? maxItems)
+    {
+        var separator = ctx.CollectionSeparator;
+        var allItems  = enumerable.Cast<object?>().ToList();
+
+        // Apply MaxItems truncation
+        int overflow = 0;
+        if (maxItems.HasValue && allItems.Count > maxItems.Value)
+        {
+            overflow = allItems.Count - maxItems.Value;
+            allItems = allItems.Take(maxItems.Value).ToList();
+        }
+
+        // Render each item (maxItems does not propagate into nested collections)
+        var rendered = allItems
+            .Select(i => ConvertValue(i, ctx))
+            .ToList<string>();
+
+        if (overflow > 0)
+            rendered.Add($"... and {overflow} more");
+
+        if (!separator.Contains('\n'))
+            return string.Join(separator, rendered);
+
+        // Multi-line: indent subsequent lines of each item so they align under the prefix.
+        // e.g. separator "\n|_ " → prefix "|_ " → indent "   " (same width)
+        var listPrefix = separator[(separator.LastIndexOf('\n') + 1)..];
+        var indent     = new string(' ', listPrefix.Length);
+        var indented   = rendered.Select(s => s.Replace("\n", "\n" + indent));
+
+        return separator + string.Join(separator, indented);
     }
 
     private static string? TrySmartEnum(object value)
     {
-        var type         = value.GetType();
-        var nameProp     = type.GetProperty("Name");
+        var type     = value.GetType();
+        var nameProp = type.GetProperty("Name");
         if (nameProp?.PropertyType != typeof(string)) return null;
 
         bool IsSmartEnum(Type t) =>
