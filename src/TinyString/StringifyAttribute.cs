@@ -3,6 +3,14 @@ namespace TinyString;
 /// <summary>
 /// An attribute to control how classes are stringified via the .Stringify() extension method.
 /// </summary>
+/// <remarks>
+/// Deprecated: use the fluent <c>Stringify(o =&gt; o.MultiLine()...)</c> API instead.
+/// This attribute will be removed in a future major version.
+/// </remarks>
+[Obsolete(
+    "Attribute-based configuration is deprecated. " +
+    "Use the fluent Stringify<T>(Action<StringifyOptions<T>>) API instead. " +
+    "This attribute will be removed in a future major version.")]
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public class StringifyAttribute : Attribute
 {

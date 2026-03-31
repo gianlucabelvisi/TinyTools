@@ -1,5 +1,13 @@
 namespace TinyString;
 
+/// <remarks>
+/// Deprecated: use the fluent <c>.For(x =&gt; x.Prop).Prefix(...).Suffix(...)</c> API instead.
+/// This attribute will be removed in a future major version.
+/// </remarks>
+[Obsolete(
+    "Attribute-based configuration is deprecated. " +
+    "Use the fluent Stringify<T>(Action<StringifyOptions<T>>) API instead. " +
+    "This attribute will be removed in a future major version.")]
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 public class StringifyPropertyAttribute : Attribute
 {
