@@ -3,7 +3,8 @@
   <Import Project="Version.props" Condition="Exists('Version.props')" />
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NuGetAudit>false</NuGetAudit>
@@ -21,7 +22,7 @@
     <PackageProjectUrl>https://github.com/gianlucabelvisi/TinyTools</PackageProjectUrl>
     <RepositoryUrl>https://github.com/gianlucabelvisi/TinyTools</RepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
-    <IncludeSource>true</IncludeSource>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RootNamespace>TinyString</RootNamespace>
 	

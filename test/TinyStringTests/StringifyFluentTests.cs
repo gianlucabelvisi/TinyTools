@@ -332,6 +332,290 @@ public class StringifyFluentTests
         result.Should().Contain("|_ ");
     }
 
+    // ── Only ────────────────────────────────────────────────────────────────
+
+    [Test]
+    public void Only_ShowsWhitelistedPropertiesAndExcludesRest()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        var result = animal.Stringify(o => o.NoLabel().Only(x => x.Name, x => x.Species));
+
+        result.Should().Be("Name: Mittens, Species: Cat");
+        result.Should().NotContain("Weight");
+        result.Should().NotContain("Age");
+        result.Should().NotContain("IsRare");
+    }
+
+    [Test]
+    public void Only_WorksWithValueTypeProperties()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        // Age (int) and IsRare (bool) are value types — make sure boxing in expressions is handled
+        var result = animal.Stringify(o => o.NoLabel().Only(x => x.Age, x => x.IsRare));
+
+        result.Should().Contain("Age: 5");
+        result.Should().Contain("IsRare: False");
+        result.Should().NotContain("Name");
+        result.Should().NotContain("Species");
+    }
+
+    // ── ValueFormat ─────────────────────────────────────────────────────────
+
+    [Test]
+    public void ValueFormat_ReplacesDefaultConversion()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.567, Age = 5, IsRare = true };
+
+        var result = animal.Stringify(o => o
+            .NoLabel()
+            .For(x => x.Weight).ValueFormat(w => w.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + " kg")
+            .For(x => x.IsRare).ValueFormat(r => r ? "⭐ Rare" : "Common")
+            .For(x => x.Name).Ignore()
+            .For(x => x.Species).Ignore()
+            .For(x => x.Age).Ignore());
+
+        result.Should().Contain("Weight: 4.6 kg");
+        result.Should().Contain("IsRare: ⭐ Rare");
+    }
+
+    // ── When ────────────────────────────────────────────────────────────────
+
+    [Test]
+    public void When_HidesProperty_WhenPredicateIsFalse()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        var result = animal.Stringify(o => o.NoLabel().For(x => x.IsRare).When(v => v));
+
+        result.Should().NotContain("IsRare");
+    }
+
+    [Test]
+    public void When_ShowsProperty_WhenPredicateIsTrue()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = true };
+
+        var result = animal.Stringify(o => o.NoLabel().For(x => x.IsRare).When(v => v));
+
+        result.Should().Contain("IsRare: True");
+    }
+
+    [Test]
+    public void When_CanFilterCollectionProperties()
+    {
+        var zoo = new Zoo
+        {
+            Name = "Empty Zoo",
+            EntrancePrice = 10,
+            Animals = []
+        };
+
+        // Only show Animals when the list is non-empty
+        var result = zoo.Stringify(o => o
+            .NoLabel()
+            .For(x => x.Animals).When(a => a.Count > 0)
+            .For(x => x.EntrancePrice).Ignore());
+
+        result.Should().NotContain("Animals");
+    }
+
+    // ── NullAs ──────────────────────────────────────────────────────────────
+
+    public class Sparse
+    {
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public int Count { get; set; }
+    }
+
+    [Test]
+    public void NullAs_OverridesNullToken()
+    {
+        var sparse = new Sparse { Name = "Test", Description = null, Count = 3 };
+
+        var result = sparse.Stringify(o => o.NoLabel().NullAs("—"));
+
+        result.Should().Contain("Description: —");
+        result.Should().NotContain("null");
+    }
+
+    // ── MaxItems ────────────────────────────────────────────────────────────
+
+    [Test]
+    public void MaxItems_TruncatesCollection_AndShowsOverflow()
+    {
+        var zoo = new Zoo
+        {
+            Name = "Big Zoo",
+            EntrancePrice = 0,
+            Animals =
+            [
+                new Animal { Name = "A", Species = "Cat",   Weight = 1, Age = 1, IsRare = false },
+                new Animal { Name = "B", Species = "Cat",   Weight = 1, Age = 1, IsRare = false },
+                new Animal { Name = "C", Species = "Dog",   Weight = 2, Age = 2, IsRare = false },
+                new Animal { Name = "D", Species = "Tiger", Weight = 3, Age = 3, IsRare = true  },
+                new Animal { Name = "E", Species = "Lion",  Weight = 4, Age = 4, IsRare = true  },
+            ]
+        };
+
+        var result = zoo.Stringify(o => o
+            .NoLabel()
+            .For(x => x.Animals).MaxItems(3)
+            .For(x => x.EntrancePrice).Ignore());
+
+        result.Should().Contain("... and 2 more");
+        result.Should().NotContain("Name: D");
+        result.Should().NotContain("Name: E");
+    }
+
+    [Test]
+    public void MaxItems_NoTruncation_WhenCountWithinLimit()
+    {
+        var zoo = new Zoo
+        {
+            Name = "Small Zoo",
+            EntrancePrice = 0,
+            Animals =
+            [
+                new Animal { Name = "A", Species = "Cat", Weight = 1, Age = 1, IsRare = false },
+                new Animal { Name = "B", Species = "Dog", Weight = 2, Age = 2, IsRare = false },
+            ]
+        };
+
+        var result = zoo.Stringify(o => o
+            .NoLabel()
+            .For(x => x.Animals).MaxItems(5)
+            .For(x => x.EntrancePrice).Ignore());
+
+        result.Should().NotContain("more");
+    }
+
+    // ── Multi-line indentation ──────────────────────────────────────────────
+
+    [Test]
+    public void MultiLine_NestedForNested_IndentsNestedLines()
+    {
+        var zoo = new Zoo
+        {
+            Name = "Indent Zoo",
+            EntrancePrice = 0,
+            Animals =
+            [
+                new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false },
+                new Animal { Name = "Tony",    Species = "Tiger", Weight = 120, Age = 6, IsRare = true },
+            ]
+        };
+
+        var result = zoo.Stringify(o => o
+            .MultiLine()
+            .NoLabel()
+            .ForNested<Animal>(a => a
+                .MultiLine()
+                .NoLabel()
+                .For(x => x.Weight).Ignore()
+                .For(x => x.Age).Ignore()
+                .For(x => x.IsRare).Ignore())
+            .For(x => x.EntrancePrice).Ignore());
+
+        var lines = result!.Split('\n');
+
+        // Each animal starts with |_
+        lines.Should().Contain(l => l.StartsWith("|_ Name: Mittens"));
+        // Subsequent property lines of the nested animal are indented by 3 spaces ("|_ " width)
+        lines.Should().Contain(l => l.StartsWith("   Species: Cat"));
+        lines.Should().Contain(l => l.StartsWith("   Species: Tiger"));
+    }
+
+    // ── ToString() override ─────────────────────────────────────────────────
+
+    public class AnimalWithToString
+    {
+        public required string Name { get; set; }
+        public required string Species { get; set; }
+        public override string ToString() => $"{Name} ({Species})";
+    }
+
+    public class ZooWithToStringAnimals
+    {
+        public required string Name { get; set; }
+        public List<AnimalWithToString> Animals { get; set; } = [];
+    }
+
+    [Test]
+    public void NestedObject_UsesToString_WhenOverridden()
+    {
+        var zoo = new ZooWithToStringAnimals
+        {
+            Name = "City Zoo",
+            Animals =
+            [
+                new AnimalWithToString { Name = "Mittens", Species = "Cat" },
+                new AnimalWithToString { Name = "Tony",    Species = "Tiger" },
+            ]
+        };
+
+        var result = zoo.Stringify(o => o.MultiLine());
+
+        // Each animal should be rendered via its ToString(), not via reflection
+        result.Should().Contain("Mittens (Cat)");
+        result.Should().Contain("Tony (Tiger)");
+        result.Should().NotContain("Name: Mittens");
+    }
+
+    // ── ForNested ───────────────────────────────────────────────────────────
+
+    [Test]
+    public void ForNested_ConfiguresNestedType_WhereverItAppears()
+    {
+        var zoo = new Zoo
+        {
+            Name = "Woodland Zoo",
+            EntrancePrice = 14.99,
+            Animals =
+            [
+                new Animal { Name = "Mittens", Species = "Cat",   Weight = 4.5,   Age = 5, IsRare = false },
+                new Animal { Name = "Tony",    Species = "Tiger",  Weight = 120.3, Age = 6, IsRare = true  },
+            ]
+        };
+
+        var result = zoo.Stringify(o => o
+            .MultiLine()
+            .ForNested<Animal>(a => a
+                .NoLabel()
+                .Separator(" ")
+                .For(x => x.Name).NoKey()
+                .For(x => x.Species).Prefix("(").Suffix(")").NoKey()
+                .For(x => x.Weight).NoKey().Suffix("kg").Decimals(2)
+                .For(x => x.Age).NoKey().Suffix("yrs")
+                .For(x => x.IsRare).Ignore()));
+
+        result.Should().Contain("|_ Mittens (Cat) 4.50kg 5yrs");
+        result.Should().Contain("|_ Tony (Tiger) 120.30kg 6yrs");
+        result.Should().NotContain("Name: Mittens");
+    }
+
+    [Test]
+    public void ForNested_CanChainWithFor()
+    {
+        var zoo = new Zoo
+        {
+            Name = "Tiny Zoo",
+            EntrancePrice = 5,
+            Animals = [ new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false } ]
+        };
+
+        // ForNested returns StringifyOptions<T> so further .For() calls work normally
+        var result = zoo.Stringify(o => o
+            .MultiLine()
+            .ForNested<Animal>(a => a.NoLabel().For(x => x.IsRare).Ignore())
+            .For(x => x.EntrancePrice).Prefix("$").Decimals(0));
+
+        result.Should().Contain("EntrancePrice: $5");
+        result.Should().NotContain("IsRare");
+    }
+
     // ── Null handling ───────────────────────────────────────────────────────
 
     [Test]

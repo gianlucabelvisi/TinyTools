@@ -34,12 +34,40 @@ public sealed class PropertyBuilder<T, TProp>
 
     /// <summary>
     /// Override the separator used between items when this property is a collection.
-    /// If the separator starts with <c>\n</c> it is also prepended before the first item.
+    /// When the separator starts with <c>\n</c>, it is also prepended before the first item
+    /// and multi-line items are indented to align under the prefix.
     /// </summary>
     public PropertyBuilder<T, TProp> Separator(string separator) { _config.CollectionSeparator = separator; return this; }
 
     /// <summary>Override the number of decimal places for this property's value.</summary>
     public PropertyBuilder<T, TProp> Decimals(int decimals) { _config.Decimals = decimals; return this; }
+
+    /// <summary>
+    /// Limit the number of items shown when this property is a collection.
+    /// Any remaining items are replaced with <c>"... and N more"</c>.
+    /// </summary>
+    public PropertyBuilder<T, TProp> MaxItems(int max) { _config.MaxItems = max; return this; }
+
+    /// <summary>
+    /// Show this property only when the predicate returns <c>true</c> for its value.
+    /// Useful for suppressing default/empty/uninteresting values.
+    /// </summary>
+    public PropertyBuilder<T, TProp> When(Func<TProp, bool> predicate)
+    {
+        _config.ShowWhen = obj => obj is TProp v && predicate(v);
+        return this;
+    }
+
+    /// <summary>
+    /// Replace the entire value conversion with a custom formatter.
+    /// Takes precedence over <see cref="Prefix"/>, <see cref="Suffix"/>,
+    /// <see cref="Decimals"/>, and <see cref="Separator"/>.
+    /// </summary>
+    public PropertyBuilder<T, TProp> ValueFormat(Func<TProp, string> formatter)
+    {
+        _config.ValueFormatter = obj => obj is TProp v ? formatter(v) : string.Empty;
+        return this;
+    }
 
     /// <summary>
     /// Continue configuring the next property. Equivalent to calling
