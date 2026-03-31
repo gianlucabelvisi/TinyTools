@@ -129,21 +129,157 @@ public class OptionalTests
     }
 
     [Test]
-    public void OrElseDo_WithValue_ReturnsValueAndDoesNotExecuteAction()
+    public void OrElseDo_WithValue_DoesNotExecuteAction()
     {
         var optional = Optional<int>.Of(20);
         var actionExecuted = false;
-        optional.OrElseDo(() => actionExecuted = true).Should().Be(20);
+        optional.OrElseDo(() => actionExecuted = true);
         actionExecuted.Should().BeFalse();
     }
 
     [Test]
-    public void OrElseDo_WithoutValue_ExecutesActionAndReturnsDefault()
+    public void OrElseDo_WithoutValue_ExecutesAction()
     {
         var optional = Optional<int>.Empty();
         var actionExecuted = false;
         optional.OrElseDo(() => actionExecuted = true);
         actionExecuted.Should().BeTrue();
+    }
+
+    [Test]
+    public void OrElseNull_WithValue_ReturnsValue()
+    {
+        var optional = Optional<string>.Of("hello");
+        optional.OrElseNull().Should().Be("hello");
+    }
+
+    [Test]
+    public void OrElseNull_WithoutValue_ReturnsNull()
+    {
+        var optional = Optional<string>.Empty();
+        optional.OrElseNull().Should().BeNull();
+    }
+
+    [Test]
+    public void SelectMany_WithValue_FlattensMapper()
+    {
+        var optional = Optional<int>.Of(5);
+        optional.SelectMany(x => Optional<string>.Of(x.ToString())).Get().Should().Be("5");
+    }
+
+    [Test]
+    public void SelectMany_WithValue_WhenMapperReturnsEmpty_ReturnsEmpty()
+    {
+        var optional = Optional<int>.Of(5);
+        optional.SelectMany(_ => Optional<string>.Empty()).IsNotPresent().Should().BeTrue();
+    }
+
+    [Test]
+    public void SelectMany_WithoutValue_ReturnsEmpty()
+    {
+        var optional = Optional<int>.Empty();
+        optional.SelectMany(x => Optional<string>.Of(x.ToString())).IsNotPresent().Should().BeTrue();
+    }
+
+    [Test]
+    public void Match_WithValue_CallsOnPresent()
+    {
+        var optional = Optional<int>.Of(42);
+        var result = optional.Match(onPresent: v => $"value:{v}", onEmpty: () => "empty");
+        result.Should().Be("value:42");
+    }
+
+    [Test]
+    public void Match_WithoutValue_CallsOnEmpty()
+    {
+        var optional = Optional<int>.Empty();
+        var result = optional.Match(onPresent: v => $"value:{v}", onEmpty: () => "empty");
+        result.Should().Be("empty");
+    }
+
+    [Test]
+    public void ToEnumerable_WithValue_YieldsOneElement()
+    {
+        var optional = Optional<int>.Of(7);
+        optional.ToEnumerable().Should().ContainSingle().Which.Should().Be(7);
+    }
+
+    [Test]
+    public void ToEnumerable_WithoutValue_YieldsNoElements()
+    {
+        var optional = Optional<int>.Empty();
+        optional.ToEnumerable().Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task SelectAsync_WithValue_ReturnsTransformedOptional()
+    {
+        var optional = Optional<int>.Of(3);
+        var result = await optional.SelectAsync(async x => { await Task.Yield(); return x * 10; });
+        result.Get().Should().Be(30);
+    }
+
+    [Test]
+    public async Task SelectAsync_WithoutValue_ReturnsEmpty()
+    {
+        var optional = Optional<int>.Empty();
+        var result = await optional.SelectAsync(async x => { await Task.Yield(); return x * 10; });
+        result.IsNotPresent().Should().BeTrue();
+    }
+
+    [Test]
+    public async Task WhereAsync_WithValueAndMatchingPredicate_ReturnsOptionalWithValue()
+    {
+        var optional = Optional<int>.Of(10);
+        var result = await optional.WhereAsync(async x => { await Task.Yield(); return x > 5; });
+        result.IsPresent().Should().BeTrue();
+    }
+
+    [Test]
+    public async Task WhereAsync_WithValueAndNonMatchingPredicate_ReturnsEmpty()
+    {
+        var optional = Optional<int>.Of(3);
+        var result = await optional.WhereAsync(async x => { await Task.Yield(); return x > 5; });
+        result.IsNotPresent().Should().BeTrue();
+    }
+
+    [Test]
+    public void Equals_BothPresent_SameValue_ReturnsTrue()
+    {
+        Optional<int>.Of(42).Should().Be(Optional<int>.Of(42));
+    }
+
+    [Test]
+    public void Equals_BothPresent_DifferentValue_ReturnsFalse()
+    {
+        Optional<int>.Of(1).Should().NotBe(Optional<int>.Of(2));
+    }
+
+    [Test]
+    public void Equals_BothEmpty_ReturnsTrue()
+    {
+        Optional<int>.Empty().Should().Be(Optional<int>.Empty());
+    }
+
+    [Test]
+    public void Equals_OnePresent_OneEmpty_ReturnsFalse()
+    {
+        Optional<int>.Of(1).Should().NotBe(Optional<int>.Empty());
+    }
+
+    [Test]
+    public void EqualityOperator_WorksCorrectly()
+    {
+        (Optional<string>.Of("a") == Optional<string>.Of("a")).Should().BeTrue();
+        (Optional<string>.Of("a") != Optional<string>.Of("b")).Should().BeTrue();
+        (Optional<string>.Empty() == Optional<string>.Empty()).Should().BeTrue();
+    }
+
+    [Test]
+    public void GetHashCode_EqualOptionals_HaveSameHash()
+    {
+        Optional<int>.Of(99).GetHashCode().Should().Be(Optional<int>.Of(99).GetHashCode());
+        Optional<int>.Empty().GetHashCode().Should().Be(Optional<int>.Empty().GetHashCode());
     }
 
     [Test]

@@ -1,128 +1,131 @@
-# Tiny Optional: A Lightweight C# Optional Type
+# TinyOptional
 
 ![Logo](https://raw.githubusercontent.com/gianlucabelvisi/TinyTools/main/src/TinyOptional/logo_icon.png)
 
-This library provides a simple **Optional** (a.k.a. “Maybe”) type for C#. It allows you to express the presence or absence of a value without resorting to `null`. If an `Optional<T>` has a value, you can safely work with that value; if it doesn’t, the library’s methods help gracefully handle the “no value” scenario.
-
-## Why Use an Optional Type?
-
-- **Clarity**: Instead of passing `null` or returning `null`, an `Optional<T>` signals explicitly that the result might be absent.  
-- **Safety**: Avoid `NullReferenceException` by forcing the developer to deal with the possibility of an empty value.  
-- **Functional Style**: `Where`, `Select`, `SelectMany`, `IfPresent`, etc., allow fluent transformations and checks.
-
-
-## Installation
+Express the presence or absence of a value without `null`. Zero ceremony, clean chaining, no exceptions by surprise.
 
 ```bash
 dotnet add package TinyOptional
 ```
 
-## Getting Started
+---
 
-### Creating Optionals
-
-```csharp
-
-// Throws an ArgumentNullException if `value` is null
-var maybeTen = Optional<int>.Of(10);
-
-// Allows null but returns an empty Optional
-var maybeName = Optional<string>.OfNullable(userName);
-
-// A straightforward empty Optional
-var none = Optional<int>.Empty();
-```
-
-### Unboxing an optional
-
-This is a simple and **wrong** way of unboxing an optional:
+## Creating an Optional
 
 ```csharp
-var maybeName = Optional<string>.OfNullable(userName);
+using TinyOptional;
 
-if (maybeName.IsPresent())
-{
-    var name = maybeName.Get();
-}
+Optional<string>.Of("hello")           // non-null value — throws if null
+Optional<string>.OfNullable(maybeNull) // wraps null as empty
+Optional<string>.Empty()               // explicitly empty
 ```
 
-While possible, this is not the suggested workflow, as it would be a glorified, more verbose null-check. 
+---
 
-Instead...
-
-### Unboxing with fallback or error handling
+## Getting the value out
 
 ```csharp
-var maybeName = Optional<string>.OfNullable(userName);
-
-// Simple fallback
-var name = maybeName.OrElse("No name provided");
-
-// In case the fallback is expensive to compute
-var name2 = maybeName.OrElseGet(() => GenerateRandomName());
-
-// In case no fallback is possible
-var name3 = empty.OrElseThrow(() => new Exception("Name is required"));
+optional.OrElse("default")                      // fallback value
+optional.OrElseGet(() => ComputeDefault())       // fallback computed lazily
+optional.OrElseNull()                            // returns T? — null if empty
+optional.OrElseDo(() => Log("nothing here"))     // run side effect if empty
+optional.Get()                                   // throws if empty
+optional.GetOrThrow(() => new NotFoundException())
 ```
 
-### Filtering and mapping 
+---
 
-It is possible to apply a `Where` clause to an Optional, returning empty if the predicate fails.
-
-The content of an optional can then be transformed using the `Select` method, before being boxed back into an Optional.
-
-This allows for a fluent, style of programming where the presence of the content is not required for the operations on it to take place.
-    
-```csharp
-
-var maybeUniverse = Optional<Universe>.Of(new Universe()
-{
-    Age = 13.8
-    AgeUnit = "billion years"
-});
-
-var age = maybeUniverse
-    .Where(u => u.AgeUnit == "billion years")
-    .Whre(u => u.Age > 13)
-    .Select(u => u.Age)
-    .OrElseThrow(() => new Exception("No universe found"));
-```
-
-### Conditional Actions
-
-The `IfPresent` and `IfNotPresent` methods allow you to execute an action if the Optional has a value or not, respectively.
+## Transforming
 
 ```csharp
-var maybeTen = Optional<int>.Of(10);
-
-maybeTen
-    .IfPresent(value => Console.WriteLine($"The value is {value}"))
-    .OrElse(() => Console.WriteLine("No value"));
+optional
+    .Where(x => x.Length > 0)           // filter — empty if predicate fails
+    .Select(x => x.ToUpper())           // map — stays empty if already empty
+    .SelectMany(x => Parse(x))          // flatmap — avoids Optional<Optional<T>>
+    .OrElse("FALLBACK")
 ```
 
-### Collections
+Async variants: `.WhereAsync(...)`, `.SelectAsync(...)`
 
-A version of FirstOrDefault that returns an Optional instead of null.
+---
+
+## Collapsing to a value
 
 ```csharp
-var fibonacci = new List<int>() = { 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89 };
-
-var firstEven = fibonacci
-  .FirstIfExists(optional => optional.Where(value => value % 2 == 0))
-  .OrElse(0);
+var label = optional.Match(
+    onPresent: name => $"Hello, {name}",
+    onEmpty:   ()   => "Hello, stranger"
+);
 ```
 
-### Strings
+---
+
+## Side effects
 
 ```csharp
-  var inputName = ReadInputName();
-  
-    var name = inputName
-        .IfAny()
-        .OrElse("No name provided");
+optional
+    .IfPresent(v => Console.WriteLine($"Got: {v}"))
+    .OrElse(() => Console.WriteLine("Nothing"));
+
+optional
+    .IfNotPresent(() => Console.WriteLine("Nothing"))
+    .OrElse(v => Console.WriteLine($"Got: {v}"));
 ```
 
-## License
+Async variants: `.IfPresentAsync(...)`, `.IfNotPresentAsync(...)`
 
-TinyOptional is licensed under the GPL v3. By using or redistributing this library, you agree to comply with the terms of that license.
+---
 
+## LINQ integration
+
+```csharp
+optional.ToEnumerable()  // IEnumerable<T> with 0 or 1 element
+
+// works in query expressions and SelectMany chains
+var results = from opt in listOfOptionals
+              from value in opt.ToEnumerable()
+              select value;
+```
+
+---
+
+## Equality
+
+Two optionals are equal when both are empty, or both are present with equal values:
+
+```csharp
+Optional<int>.Of(42) == Optional<int>.Of(42)  // true
+Optional<int>.Empty() == Optional<int>.Empty() // true
+Optional<int>.Of(1)  == Optional<int>.Of(2)   // false
+```
+
+---
+
+## Collection extensions
+
+All return `Optional<T>` instead of throwing or returning null:
+
+```csharp
+list.FirstIfExists()                    // first element, or empty
+list.FirstIfExists(x => x.IsActive)    // first match, or empty
+list.LastIfExists()                     // last element, or empty
+list.LastIfExists(x => x.IsActive)     // last match, or empty
+list.SingleIfExists()                   // the only element — empty if 0 or 2+
+list.SingleIfExists(x => x.IsActive)   // the only match — empty if 0 or 2+
+list.ElementAtIfExists(3)              // safe index access
+list.AggregateIfExists(seed, func)     // empty if source is null or empty
+```
+
+---
+
+## String extension
+
+```csharp
+"hello".IfAny()   // Optional<string> with value
+"".IfAny()        // empty Optional
+((string?)null).IfAny()  // empty Optional
+```
+
+---
+
+MIT License
