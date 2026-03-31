@@ -1,9 +1,8 @@
-# Tiny String: Small but Mighty String Utilities for .NET
+# TinyString
 
 ![Logo](https://raw.githubusercontent.com/gianlucabelvisi/TinyTools/main/src/TinyString/logo_icon.png)
 
-**TinyString** is a powerful, attribute-driven object pretty-printer for .NET.  
-Drop it into any C# project to get beautiful, customizable string representations of your objects.
+**TinyString** is a lightweight .NET library that turns any object into a readable string — with zero boilerplate for simple cases and a clean fluent API when you need more control.
 
 ---
 
@@ -15,384 +14,170 @@ dotnet add package TinyString
 
 ---
 
-## Table of Contents
+## Quick Start
 
-- [Basic Usage](#basic-usage)
-- [Class-Level Customization](#class-level-customization)
-- [Property-Level Customization](#property-level-customization)
-- [Ignoring Properties](#ignoring-properties)
-- [Naming Formats](#naming-formats)
-- [Advanced Features](#advanced-features)
-- [Full Examples](#full-examples)
-- [License](#license)
-
----
-
-## Basic Usage
-
-Just call `.Stringify()` on any object:
+Call `.Stringify()` on any object and get a sensible result with no configuration:
 
 ```csharp
 using TinyString;
 
-public class Book
-{
-    public string Title { get; set; } = "";
-    public string Author { get; set; } = "";
-    public int Pages { get; set; }
-}
-
 var book = new Book { Title = "1984", Author = "George Orwell", Pages = 328 };
-Console.WriteLine(book.Stringify());
-// Output: Book. Title: 1984, Author: George Orwell, Pages: 328
+book.Stringify();
+// → "Book. Title: 1984, Author: George Orwell, Pages: 328"
 ```
+
+Public properties are printed in declaration order. The class name is used as the header, separated by `". "`. Floats default to 2 decimal places.
 
 ---
 
-## Class-Level Customization
+## Fluent API
 
-Control the output style with `[Stringify(...)]` options:
+Pass a configuration action to `Stringify()` to customise the output at the call site — no attributes needed on your classes:
 
 ```csharp
-[Stringify(
-    PrintStyle = PrintStyle.MultiLine,
-    Emoji = "🦁🦓🦍",
-    PrintClassName = false,
-    PropertySeparator = " | ",
-    CollectionSeparator = "\n|_ ",
-    Decimals = 0,
-    NamingFormat = NamingFormat.KebabCase,
-    PropertyFormat = "{k} {v}",
-    ClassNameSeparator = " :: "
-)]
-public class Zoo
-{
-    public required string Title { get; set; }
-    public List<Animal> Animals { get; set; } = [];
-    public double EntrancePrice { get; set; }
-}
-
-[Stringify(
-    PrintStyle = PrintStyle.SingleLine,
-    PrintClassName = false,
-    PropertySeparator = " ",
-    PropertyFormat = "{k} {v}",
-    Decimals = 2
-)]
-public class Animal
-{
-    [StringifyProperty(format: "{v}")]
-    public required string Name { get; set; }
-
-    [StringifyProperty(format: "({v})")]
-    public required Species Species { get; set; }
-
-    [StringifyProperty(format: "{v}kg")]
-    public required double Weight { get; set; }
-
-    [StringifyProperty(format: "{v}yrs")]
-    public int Age { get; set; }
-
-    [StringifyProperty(format: "(rare: {v})")]
-    public bool IsRare { get; set; }
-}
-
-public enum Species { Cat, Tiger, Elephant }
-
 var zoo = new Zoo
 {
-    Title = "Wonderful Zoo",
-    EntrancePrice = 15,
-    Animals = new()
-    {
-        new Animal { Name = "Mittens", Species = Species.Cat, Weight = 4.5, Age = 5, IsRare = false },
-        new Animal { Name = "Tony", Species = Species.Tiger, Weight = 120.3, Age = 6, IsRare = true }
-    }
+    Name = "Woodland Zoo",
+    EntrancePrice = 14.99,
+    Animals = [ new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5 }, ... ]
 };
 
-Console.WriteLine(zoo.Stringify());
-/*
-🦁🦓🦍
-Title Wonderful Zoo
-Animals 
-|_ Mittens (Cat) 4.50kg 5yrs (rare: False)
-|_ Tony (Tiger) 120.30kg 6yrs (rare: True)
-EntrancePrice 15
-*/
+zoo.Stringify(o => o
+    .MultiLine()
+    .Label("🦁 Zoo")
+    .For(x => x.EntrancePrice).Prefix("$").Decimals(0)
+    .For(x => x.Animals).Separator("\n|_ "));
+```
+
+```
+🦁 Zoo
+Name: Woodland Zoo
+EntrancePrice: $15
+Animals:
+|_ Animal. Name: Mittens, Species: Cat, Weight: 4.50
+|_ Animal. Name: Tony, Species: Tiger, Weight: 120.30
 ```
 
 ---
 
-## Property-Level Customization
+## Global Options
 
-Override formatting for individual properties:
-
-```csharp
-[StringifyProperty(format: "🎭 {v}")]
-public string Name { get; set; }
-
-[StringifyProperty(format: "💰 {v} gold")]
-public decimal Gold { get; set; }
-
-[StringifyProperty(format: "HP: {v}/{v}")]
-public Health Health { get; set; }
-```
+| Method | Description | Default |
+|---|---|---|
+| `.MultiLine()` | One property per line | — |
+| `.SingleLine()` | All on one line | ✓ |
+| `.Label("text")` | Override the class name header | Class name |
+| `.NoLabel()` | Hide the header | — |
+| `.Separator("…")` | Between properties (single-line) | `", "` |
+| `.CollectionSeparator("…")` | Between collection items (all properties) | `"; "` |
+| `.Decimals(n)` | Decimal places for floats | `2` |
+| `.Keys(NamingFormat.X)` | Key naming style | `PascalCase` |
 
 ---
 
-## Ignoring Properties
+## Per-Property Options
 
-Skip properties with `[StringifyIgnore]`:
+Start a property chain with `.For(x => x.Property)`:
+
+| Method | Description |
+|---|---|
+| `.Ignore()` | Exclude this property entirely |
+| `.As("label")` | Override the display name of the key |
+| `.NoKey()` | Show only the value, no key |
+| `.Prefix("…")` | Prepend text before the value |
+| `.Suffix("…")` | Append text after the value |
+| `.Separator("…")` | Collection separator for this property |
+| `.Decimals(n)` | Decimal places for this property |
+
+Continuing with `.For()` at the end of any property chain moves to the next property, so the whole configuration reads as one fluent expression:
 
 ```csharp
-public class SecretNote
-{
-    public string Message { get; set; } = "";
-
-    [StringifyIgnore]
-    public string Password { get; set; } = "";
-}
-
-var note = new SecretNote { Message = "Hello", Password = "secret123" };
-Console.WriteLine(note.Stringify());
-// Output: SecretNote: Message: Hello
-// (Password is ignored)
+order.Stringify(o => o
+    .NoLabel()
+    .Separator(" | ")
+    .For(x => x.Price).Prefix("$").Decimals(2)
+    .For(x => x.Discount).Suffix("%").NoKey()
+    .For(x => x.InternalId).Ignore());
 ```
 
 ---
 
 ## Naming Formats
 
-Choose how property names are displayed:
+| Format | Example |
+|---|---|
+| `PascalCase` (default) | `FirstName` |
+| `CamelCase` | `firstName` |
+| `SnakeCase` | `first_name` |
+| `KebabCase` | `first-name` |
+| `HumanCase` | `First Name` |
 
 ```csharp
-[Stringify(NamingFormat = NamingFormat.SnakeCase)]
-public class SnakeCaseExample
-{
-    public string MyProperty { get; set; } = "value";
-}
-// Output: SnakeCaseExample: my_property: value
-
-[Stringify(NamingFormat = NamingFormat.HumanCase)]
-public class HumanCaseExample
-{
-    public string MyProperty { get; set; } = "value";
-}
-// Output: HumanCaseExample: My Property: value
-```
-
-**Available formats:**
-- `PascalCase` (default): `MyProperty`
-- `CamelCase`: `myProperty`
-- `SnakeCase`: `my_property`
-- `KebabCase`: `my-property`
-- `HumanCase`: `My Property`
-
----
-
-## Advanced Features
-
-### Nested Objects & Collections
-
-Objects are stringified recursively, and collections are joined with your specified separator:
-
-```csharp
-[Stringify(
-    PrintStyle = PrintStyle.MultiLine,
-    Emoji = "⚔️",
-    PropertySeparator = "\n",
-    CollectionSeparator = ", ",
-    Decimals = 1
-)]
-public class Character
-{
-    [StringifyProperty(format: "🎭 {v}")]
-    public string Name { get; set; } = "";
-
-    [StringifyProperty(format: "Skills: [{v}]")]
-    public List<string> Skills { get; set; } = new();
-
-    [StringifyProperty(format: "🎒 {v}")]
-    public Inventory Inventory { get; set; } = new();
-}
-
-[Stringify(
-    PrintStyle = PrintStyle.SingleLine,
-    PropertySeparator = " | ",
-    PropertyFormat = "{k}={v}"
-)]
-public class Inventory
-{
-    public List<Item> Items { get; set; } = new();
-    public int Weight { get; set; }
-}
-
-[Stringify(PropertyFormat = "[{k}:{v}]")]
-public class Item
-{
-    public string Name { get; set; } = "";
-    public ItemType Type { get; set; }
-}
-
-public enum ItemType { Weapon, Armor }
-
-var hero = new Character
-{
-    Name = "Gandalf",
-    Skills = new() { "Fireball", "Teleport" },
-    Inventory = new Inventory
-    {
-        Items = new() { new Item { Name = "Staff", Type = ItemType.Weapon } },
-        Weight = 15
-    }
-};
-
-Console.WriteLine(hero.Stringify());
-/*
-⚔️ Character
-🎭 Gandalf
-Skills: [Fireball, Teleport]
-🎒 Items: [Name:Staff] [Type:Weapon] | Weight=15
-*/
-```
-
-### Null & Empty Handling
-
-```csharp
-var character = new Character
-{
-    Name = "Empty Character",
-    Skills = null!,  // null collection
-    Inventory = new Inventory { Items = new() }  // empty collection
-};
-
-Console.WriteLine(character.Stringify());
-// Skills: [null]
-// Items: (empty collection)
+item.Stringify(o => o.Keys(NamingFormat.HumanCase));
+// → "Item. First Name: Ada, Is Active: True"
 ```
 
 ---
 
-## Full Examples
+## Nested Objects & Collections
 
-### RPG Character Sheet
+Nested objects are stringified automatically using their own defaults (or their own `.Stringify()` call, if any):
 
 ```csharp
-[Stringify(
-    PrintStyle = PrintStyle.MultiLine,
-    Emoji = "⚔️",
-    PropertySeparator = "\n",
-    CollectionSeparator = ", ",
-    Decimals = 1,
-    NamingFormat = NamingFormat.HumanCase
-)]
-public class Character
+var order = new Order
 {
-    [StringifyProperty(format: "🎭 {v}")]
-    public string Name { get; set; } = "";
-
-    [StringifyProperty(format: "Level {v}")]
-    public int Level { get; set; }
-
-    [StringifyProperty(format: "Class: {v}")]
-    public CharacterClass Class { get; set; }
-
-    [StringifyProperty(format: "Skills: [{v}]")]
-    public List<string> Skills { get; set; } = new();
-
-    [StringifyProperty(format: "💰 {v} gold")]
-    public decimal Gold { get; set; }
-
-    [StringifyIgnore]
-    public string SecretPassword { get; set; } = "";
-
-    [StringifyProperty(format: "⭐ {v}")]
-    public bool IsLegendary { get; set; }
-}
-
-public enum CharacterClass { Warrior, Mage, Rogue }
-
-var hero = new Character
-{
-    Name = "Gandalf",
-    Level = 99,
-    Class = CharacterClass.Mage,
-    Skills = new() { "Fireball", "Teleport", "Lightning Bolt" },
-    Gold = 1250.75m,
-    IsLegendary = true
+    Product = new Product { Name = "Book", Price = 12.99 },
+    Qty = 2
 };
 
-Console.WriteLine(hero.Stringify());
-/*
-⚔️ Character
-🎭 Gandalf
-Level 99
-Class: Mage
-Skills: [Fireball, Teleport, Lightning Bolt]
-💰 1250.8 gold
-⭐ True
-*/
+order.Stringify();
+// → "Order. Product: Product. Name: Book, Price: 12.99, Qty: 2"
 ```
 
-### Zoo Management
+Collections are joined with the active separator:
 
 ```csharp
-[Stringify(
-    Emoji = "🦁🦓🦍",
-    PrintStyle = PrintStyle.MultiLine,
-    CollectionSeparator = "\n|_ ",
-    Decimals = 0
-)]
+order.Stringify(o => o.For(x => x.Tags).Separator(" · "));
+// → "Order. Tags: sci-fi · classic · dystopian, ..."
+```
+
+---
+
+## Full Example: Animal Compact Format
+
+```csharp
+animal.Stringify(o => o
+    .NoLabel()
+    .Separator(" ")
+    .For(x => x.Name).NoKey()
+    .For(x => x.Species).Prefix("(").Suffix(")").NoKey()
+    .For(x => x.Weight).NoKey().Suffix("kg").Decimals(2)
+    .For(x => x.Age).NoKey().Suffix("yrs")
+    .For(x => x.IsRare).Ignore());
+
+// → "Mittens (Cat) 4.50kg 5yrs"
+```
+
+---
+
+## Legacy Attribute API (Deprecated)
+
+Previous versions used attributes to configure stringification. These still work but will produce deprecation warnings and will be removed in a future major version.
+
+```csharp
+// ⚠️ Deprecated
+[Stringify(PrintStyle = PrintStyle.MultiLine, Emoji = "🦁")]
 public class Zoo
 {
-    public string Title { get; set; } = "";
-    public List<Animal> Animals { get; set; } = new();
+    [StringifyProperty(format: "${v}")]
     public double EntrancePrice { get; set; }
+
+    [StringifyIgnore]
+    public string InternalCode { get; set; } = "";
 }
-
-[Stringify(
-    PrintStyle = PrintStyle.SingleLine,
-    PropertySeparator = " ",
-    Decimals = 2
-)]
-public class Animal
-{
-    [StringifyProperty(format: "{v}")]
-    public string Name { get; set; } = "";
-
-    [StringifyProperty(format: "({v})")]
-    public Species Species { get; set; }
-
-    [StringifyProperty(format: "{v}kg")]
-    public double Weight { get; set; }
-
-    [StringifyProperty(format: "{v}yrs")]
-    public int Age { get; set; }
-}
-
-public enum Species { Cat, Tiger, Elephant }
-
-var zoo = new Zoo
-{
-    Title = "Wonderful Zoo",
-    Animals = new()
-    {
-        new Animal { Name = "Mittens", Species = Species.Cat, Weight = 4.5, Age = 5 },
-        new Animal { Name = "Tony", Species = Species.Tiger, Weight = 120.3, Age = 6 }
-    },
-    EntrancePrice = 15
-};
-
-Console.WriteLine(zoo.Stringify());
-/*
-🦁🦓🦍 Zoo
-Title: Wonderful Zoo
-Animals: 
-|_ Mittens (Cat) 4.50kg 5yrs
-|_ Tony (Tiger) 120.30kg 6yrs
-EntrancePrice: 15
-*/
 ```
+
+Migrate by moving the configuration to the `.Stringify(o => o…)` call site instead.
 
 ---
 

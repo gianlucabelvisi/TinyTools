@@ -7,30 +7,112 @@ namespace TinyString;
 
 public static class Stringifier
 {
-    public static string? Stringify(this object? obj)
+    // ── New fluent API ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Converts an object to a human-readable string.
+    /// Pass an optional <paramref name="configure"/> action to customise the output
+    /// with the fluent builder; omit it for sensible defaults.
+    /// </summary>
+    public static string? Stringify<T>(this T obj, Action<StringifyOptions<T>>? configure = null)
     {
         if (obj is null) return null;
 
-        var objType = obj.GetType();
+        // When called with no options, honour any legacy attributes so that
+        // existing code keeps working without changes.
+        if (configure is null && HasLegacyAttributes(typeof(T)))
+            return StringifyLegacy(obj);
 
-        // Get the class attribute (if present) or create a default one
-        var classAttr = objType.GetCustomAttribute<StringifyAttribute>() ?? new StringifyAttribute();
+        var options = new StringifyOptions<T>();
+        configure?.Invoke(options);
+        return StringifyWithOptions(obj, options);
+    }
 
+    private static string StringifyWithOptions<T>(T obj, StringifyOptions<T> opts)
+    {
+        var type = typeof(T);
         var sb = new StringBuilder();
 
-        // Class name / emoji
-        if (classAttr.Emoji.IsNotEmpty())
+        // Header
+        if (opts._showHeader)
         {
-            sb.Append(classAttr.Emoji);
+            sb.Append(opts._header ?? type.Name);
+            if (opts._style == PrintStyle.MultiLine)
+                sb.AppendLine();
+            else
+                sb.Append(". ");
         }
+
+        var props = type
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.GetIndexParameters().Length == 0 && p.CanRead);
+
+        var first = true;
+        foreach (var prop in props)
+        {
+            opts._properties.TryGetValue(prop.Name, out var cfg);
+            if (cfg?.Ignored == true) continue;
+
+            var keyName  = ConvertName(cfg?.Label ?? prop.Name, opts._namingFormat);
+            var showKey  = cfg?.ShowKey ?? true;
+            var prefix   = cfg?.Prefix ?? "";
+            var suffix   = cfg?.Suffix ?? "";
+            var decimals = cfg?.Decimals ?? opts._decimals;
+            var collSep  = cfg?.CollectionSeparator ?? opts._collectionSeparator;
+
+            var value    = prop.GetValue(obj);
+            var rendered = prefix + ConvertValue(value, decimals, collSep) + suffix;
+            var line     = showKey ? $"{keyName}: {rendered}" : rendered;
+
+            if (opts._style == PrintStyle.SingleLine)
+            {
+                if (!first) sb.Append(opts._separator);
+                sb.Append(line);
+                first = false;
+            }
+            else
+            {
+                sb.AppendLine(line);
+            }
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    // ── Legacy attribute-based API (deprecated) ─────────────────────────────
+
+    /// <summary>
+    /// Converts an object to a string using the legacy attribute-based configuration
+    /// (<c>[Stringify]</c>, <c>[StringifyProperty]</c>, <c>[StringifyIgnore]</c>).
+    /// </summary>
+    /// <remarks>
+    /// This overload is kept for backwards compatibility. Migrate to
+    /// <see cref="Stringify{T}(T, Action{StringifyOptions{T}})"/> with the fluent API.
+    /// Attribute-based configuration will be removed in a future major version.
+    /// </remarks>
+    [Obsolete(
+        "Attribute-based configuration is deprecated. " +
+        "Use Stringify<T>(Action<StringifyOptions<T>>) with the fluent API instead. " +
+        "Attribute-based configuration will be removed in a future major version.")]
+    public static string? Stringify(this object? obj) =>
+        obj is null ? null : StringifyLegacy(obj);
+
+    // Called internally (no obsolete warning) for legacy-attribute objects and nested objects.
+    internal static string StringifyLegacy(object obj)
+    {
+        var type      = obj.GetType();
+        var classAttr = type.GetCustomAttribute<StringifyAttribute>() ?? new StringifyAttribute();
+        var sb        = new StringBuilder();
+
+        if (classAttr.Emoji.IsNotEmpty())
+            sb.Append(classAttr.Emoji);
 
         if (classAttr.PrintClassName)
         {
-            sb.Append(sb.Length == 0 ? "" : " ");
-            sb.Append(objType.Name);
+            if (sb.Length > 0) sb.Append(' ');
+            sb.Append(type.Name);
         }
 
-        // If we printed an emoji or class name, append line or ClassNameSeparator
         if (sb.Length > 0)
         {
             if (classAttr.PrintStyle == PrintStyle.MultiLine)
@@ -39,160 +121,101 @@ public static class Stringifier
                 sb.Append(classAttr.ClassNameSeparator);
         }
 
-        // Gather public readable instance properties
-        var props = objType
+        var props = type
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.GetIndexParameters().Length == 0)
-            .Where(p => p.CanRead)
+            .Where(p => p.GetIndexParameters().Length == 0 && p.CanRead)
             .Where(p => p.GetCustomAttribute<StringifyIgnoreAttribute>() == null);
 
-        var firstProp = true;
-
+        var first = true;
         foreach (var prop in props)
         {
-            var rawValue = prop.GetValue(obj);
-            var propName = ConvertName(prop.Name, classAttr.NamingFormat);
+            var propAttr  = prop.GetCustomAttribute<StringifyPropertyAttribute>();
+            var propName  = ConvertName(prop.Name, classAttr.NamingFormat);
+            var format    = propAttr?.Format ?? classAttr.PropertyFormat;
+            var collSep   = propAttr?.CollectionSeparator ?? classAttr.CollectionSeparator;
+            var decimals  = propAttr?.Decimals ?? classAttr.Decimals;
 
-            // Check for property-level attribute
-            var propAttr = prop.GetCustomAttribute<StringifyPropertyAttribute>();
-
-            // Determine property-specific settings
-            var propFormat = propAttr?.Format ?? classAttr.PropertyFormat;
-            var propCollectionSeparator = propAttr?.CollectionSeparator ?? classAttr.CollectionSeparator;
-            var propDecimals = propAttr?.Decimals ?? classAttr.Decimals;
-
-            var propValue = ConvertValue(rawValue, propDecimals, propCollectionSeparator);
-
-            var formattedProp = propFormat
-                .Replace("{k}", propName)
-                .Replace("{v}", propValue);
+            var value     = prop.GetValue(obj);
+            var converted = ConvertValue(value, decimals, collSep);
+            var line      = format.Replace("{k}", propName).Replace("{v}", converted);
 
             if (classAttr.PrintStyle == PrintStyle.SingleLine)
             {
-                if (!firstProp)
-                {
-                    sb.Append(classAttr.PropertySeparator);
-                }
-                sb.Append(formattedProp);
-                firstProp = false;
+                if (!first) sb.Append(classAttr.PropertySeparator);
+                sb.Append(line);
+                first = false;
             }
             else
             {
-                sb.AppendLine(formattedProp);
+                sb.AppendLine(line);
             }
         }
 
         return sb.ToString().TrimEnd();
     }
 
-    private static string ConvertName(string name, NamingFormat namingFormat)
+    // ── Shared helpers ──────────────────────────────────────────────────────
+
+    private static bool HasLegacyAttributes(Type type)
     {
-        return namingFormat switch
+        if (type.GetCustomAttribute<StringifyAttribute>() != null) return true;
+        return type
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Any(p => p.GetCustomAttribute<StringifyPropertyAttribute>() != null
+                   || p.GetCustomAttribute<StringifyIgnoreAttribute>() != null);
+    }
+
+    private static string ConvertName(string name, NamingFormat format) => format switch
+    {
+        NamingFormat.CamelCase  => name.ToCamelCase(),
+        NamingFormat.SnakeCase  => name.ToSnakeCase(),
+        NamingFormat.KebabCase  => name.ToKebabCase(),
+        NamingFormat.HumanCase  => name.ToHumanCase(),
+        _                       => name,
+    };
+
+    internal static string ConvertValue(object? value, int decimals, string collectionSeparator) =>
+        value switch
         {
-            NamingFormat.CamelCase => name.ToCamelCase(),
-            NamingFormat.SnakeCase => name.ToSnakeCase(),
-            NamingFormat.KebabCase => name.ToKebabCase(),
-            NamingFormat.HumanCase => name.ToHumanCase(),
-            _ => name, // default PascalCase
+            null                    => "null",
+            string s                => s,
+            bool b                  => b.ToString(),
+            Enum e                  => e.ToString(),
+            int or long or short
+                or byte or uint
+                or ulong or ushort
+                or sbyte            => value.ToString()!,
+            IEnumerable enumerable  => ConvertCollection(enumerable, decimals, collectionSeparator),
+            float f                 => f.ToString($"F{decimals}", CultureInfo.InvariantCulture),
+            double d                => d.ToString($"F{decimals}", CultureInfo.InvariantCulture),
+            decimal m               => m.ToString($"F{decimals}", CultureInfo.InvariantCulture),
+            _                       => TrySmartEnum(value) ?? StringifyLegacy(value),
         };
+
+    private static string ConvertCollection(IEnumerable enumerable, int decimals, string separator)
+    {
+        var items  = enumerable.Cast<object?>().Select(i => ConvertValue(i, decimals, separator));
+        var joined = string.Join(separator, items);
+        // If the separator starts with a newline the caller wants it also before the first item.
+        return separator.Contains('\n') ? separator + joined : joined;
     }
 
-    private static string ConvertValue(object? value, int decimals, string collectionSeparator)
+    private static string? TrySmartEnum(object value)
     {
-        switch (value)
+        var type         = value.GetType();
+        var nameProp     = type.GetProperty("Name");
+        if (nameProp?.PropertyType != typeof(string)) return null;
+
+        bool IsSmartEnum(Type t) =>
+            t.GetInterfaces().Any(i => i.Name.Contains("SmartEnum"));
+
+        var cursor = type;
+        while (cursor != null && cursor != typeof(object))
         {
-            case null:
-                return "null";
-            case string s:
-                return s;
-            case bool b:
-                return b.ToString();
-            case Enum e:
-                return e.ToString();
-            case int i:
-                return i.ToString();
-            case long l:
-                return l.ToString();
-            case short s:
-                return s.ToString();
-            case byte b:
-                return b.ToString();
-            case uint ui:
-                return ui.ToString();
-            case ulong ul:
-                return ul.ToString();
-            case ushort us:
-                return us.ToString();
-            case sbyte sb:
-                return sb.ToString();
-            case IEnumerable enumerable when value is not string:
-            {
-                var items = new List<string>();
-
-                foreach (var item in enumerable)
-                {
-                    items.Add(ConvertValue(item, decimals, collectionSeparator));
-                }
-                var itemStr = items.Join(collectionSeparator);
-
-                if (collectionSeparator.Contains("\n"))
-                    itemStr = collectionSeparator + itemStr;
-
-                return itemStr;
-            }
-            case float f:
-                return string.Format(CultureInfo.InvariantCulture, $"{{0:F{decimals}}}", f);
-            case double d:
-                return string.Format(CultureInfo.InvariantCulture, $"{{0:F{decimals}}}", d);
-            case decimal m:
-                return string.Format(CultureInfo.InvariantCulture, $"{{0:F{decimals}}}", m);
-            default:
-                // Check if it's a SmartEnum by looking for a Name property
-                var type = value.GetType();
-                var nameProperty = type.GetProperty("Name");
-
-                if (nameProperty != null &&
-                    nameProperty.PropertyType == typeof(string) &&
-                    IsSmartEnumType(type))
-                {
-                    var name = nameProperty.GetValue(value) as string;
-                    return name ?? value.ToString() ?? string.Empty;
-                }
-
-                // For other class types, call Stringify() recursively
-                return value.Stringify() ?? string.Empty;
+            if (cursor.Name.Contains("SmartEnum") || IsSmartEnum(cursor))
+                return nameProp.GetValue(value) as string;
+            cursor = cursor.BaseType;
         }
-    }
-
-    private static bool IsSmartEnumType(Type type)
-    {
-        // Check if the type is likely a SmartEnum by examining its inheritance hierarchy
-        // This is a heuristic approach since we don't have direct access to the SmartEnum type
-
-        // Check if the type has a base type that contains "SmartEnum" in its name
-        var baseType = type.BaseType;
-        while (baseType != null && baseType != typeof(object))
-        {
-            if (baseType.Name.Contains("SmartEnum"))
-                return true;
-
-            // Also check if it implements interfaces with SmartEnum in the name
-            foreach (var interfaceType in baseType.GetInterfaces())
-            {
-                if (interfaceType.Name.Contains("SmartEnum"))
-                    return true;
-            }
-
-            baseType = baseType.BaseType;
-        }
-
-        // Check if the type directly implements interfaces with SmartEnum in the name
-        foreach (var interfaceType in type.GetInterfaces())
-        {
-            if (interfaceType.Name.Contains("SmartEnum"))
-                return true;
-        }
-
-        return false;
+        return IsSmartEnum(type) ? nameProp.GetValue(value) as string : null;
     }
 }
