@@ -81,15 +81,58 @@ public static class Stringifier
 
             // Value conversion — custom formatter takes full control when set
             string convertedValue;
+            var nullToken = cfg?.NullAs ?? opts._nullToken;
+
             if (cfg?.ValueFormatter != null)
             {
                 convertedValue = cfg.ValueFormatter(rawValue);
             }
             else
             {
-                var ctx = new RenderContext(decimals, collSep, opts._nullToken, opts._nestedRenderers);
-                convertedValue = ConvertValue(rawValue, ctx, cfg?.MaxItems);
+                // Apply Transform before anything else
+                var effectiveValue = cfg?.Transform != null ? cfg.Transform(rawValue) : rawValue;
+
+                // Highlight (conditional formatter)
+                if (cfg?.HighlightPredicate != null && cfg.HighlightFormatter != null
+                         && cfg.HighlightPredicate(effectiveValue))
+                {
+                    convertedValue = cfg.HighlightFormatter(effectiveValue);
+                }
+                // BoolAs
+                else if (cfg?.BoolTrueLabel != null && effectiveValue is bool bVal)
+                {
+                    convertedValue = bVal ? cfg.BoolTrueLabel : cfg.BoolFalseLabel!;
+                }
+                // DateFormat
+                else if (cfg?.DateFormat != null && effectiveValue is IFormattable dateVal
+                         && IsDateLike(effectiveValue))
+                {
+                    convertedValue = dateVal.ToString(cfg.DateFormat, CultureInfo.InvariantCulture);
+                }
+                // NumberFormat
+                else if (cfg?.NumberFormat != null && effectiveValue is IFormattable numVal
+                         && effectiveValue is int or long or short or byte or uint or ulong
+                            or ushort or sbyte or float or double or decimal)
+                {
+                    convertedValue = numVal.ToString(cfg.NumberFormat, CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    var ctx = new RenderContext(decimals, collSep, nullToken, opts._nestedRenderers);
+                    convertedValue = ConvertValue(effectiveValue, ctx, cfg?.MaxItems);
+                }
             }
+
+            // Value replacements (match against the rendered string)
+            if (cfg?.ValueReplacements != null
+                && cfg.ValueReplacements.TryGetValue(convertedValue, out var replacement))
+            {
+                convertedValue = replacement;
+            }
+
+            // Truncate
+            if (cfg?.TruncateLength is { } maxLen && convertedValue.Length > maxLen)
+                convertedValue = convertedValue[..maxLen] + "…";
 
             var rendered = prefix + convertedValue + suffix;
             var line     = showKey ? $"{keyName}: {rendered}" : rendered;
@@ -195,6 +238,9 @@ public static class Stringifier
             .Any(p => p.GetCustomAttribute<StringifyPropertyAttribute>() != null
                    || p.GetCustomAttribute<StringifyIgnoreAttribute>() != null);
     }
+
+    private static bool IsDateLike(object? value) => value is DateTime or DateTimeOffset
+        || value?.GetType().Name is "DateOnly" or "TimeOnly";
 
     private static string ConvertName(string name, NamingFormat format) => format switch
     {

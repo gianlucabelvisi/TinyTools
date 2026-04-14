@@ -137,4 +137,16 @@ internal sealed class PropertyConfig
     public int? MaxItems { get; set; }
     public Func<object?, bool>? ShowWhen { get; set; }
     public Func<object?, string>? ValueFormatter { get; set; }
+
+    // New in 0.3.0
+    public Dictionary<string, string>? ValueReplacements { get; set; }
+    public string? DateFormat { get; set; }
+    public string? BoolTrueLabel { get; set; }
+    public string? BoolFalseLabel { get; set; }
+    public int? TruncateLength { get; set; }
+    public Func<object?, object?>? Transform { get; set; }
+    public string? NullAs { get; set; }
+    public string? NumberFormat { get; set; }
+    public Func<object?, bool>? HighlightPredicate { get; set; }
+    public Func<object?, string>? HighlightFormatter { get; set; }
 }

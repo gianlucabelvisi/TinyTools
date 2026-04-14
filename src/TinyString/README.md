@@ -97,12 +97,155 @@ animal.Stringify(o => o
 | `.MaxItems(n)` | Truncate a collection; appends `"... and N more"` |
 | `.When(v => …)` | Show only when the predicate is true |
 | `.ValueFormat(v => …)` | Full control over value rendering |
+| `.ReplaceValues(dict)` | Swap specific values for custom strings |
+| `.DateFormat("…")` | Format `DateTime` / `DateTimeOffset` values |
+| `.BoolAs("Yes", "No")` | Custom labels for `true` / `false` |
+| `.Truncate(n)` | Cap string length, appends `"…"` |
+| `.Transform(v => …)` | Transform the value before rendering |
+| `.UpperCase()` / `.LowerCase()` | Case conversion shortcuts |
+| `.NullAs("…")` | Per-property null token (overrides global) |
+| `.NumberFormat("…")` | .NET format string for numeric values |
+| `.Highlight(pred, fmt)` | Conditional formatting when predicate matches |
 
 `.Only()` is the shorthand for whitelisting a few properties without chaining multiple `.Ignore()` calls:
 
 ```csharp
 animal.Stringify(o => o.Only(x => x.Name, x => x.Species));
 // → "Animal. Name: Mittens, Species: Cat"
+```
+
+---
+
+## Value formatting
+
+### ReplaceValues — swap specific values for labels or emoji
+
+Map known values to display strings. Works with any type — strings, ints, enums, etc. Values not in the dictionary render normally.
+
+Matching is done against the rendered string representation, so for complex types (classes), the replacement matches against `ToString()`.
+
+```csharp
+task.Stringify(o => o
+    .For(x => x.Source).ReplaceValues(new() {
+        { "area", "🗺️" },
+        { "inbox", "📥" }
+    })
+    .For(x => x.Priority).ReplaceValues(new() {
+        { 1, "🔴 Critical" },
+        { 2, "🟡 Medium" },
+        { 3, "🟢 Low" }
+    }));
+// → "Task. Title: Fix bug, Source: 📥, Priority: 🔴 Critical"
+```
+
+For nested objects with `ToString()` overrides:
+
+```csharp
+// Given: AnimalWithToString.ToString() → "Mittens (Cat)"
+task.Stringify(o => o
+    .For(x => x.Owner).ReplaceValues(new() {
+        { new Animal { Name = "Mittens", Species = "Cat" }, "🐱 Mittens" }
+    }));
+// → "Task. Title: Fix bug, Owner: 🐱 Mittens"
+```
+
+### DateFormat — format dates and times
+
+Apply a .NET format string to `DateTime` or `DateTimeOffset` properties.
+
+```csharp
+event.Stringify(o => o
+    .For(x => x.StartsAt).DateFormat("yyyy-MM-dd")
+    .For(x => x.CreatedAt).DateFormat("dd MMM yyyy HH:mm"));
+// → "Event. Name: Launch, StartsAt: 2026-03-15, CreatedAt: 01 Jun 2026 09:00"
+```
+
+### BoolAs — friendly true/false labels
+
+Replace `True` / `False` with any pair of strings.
+
+```csharp
+animal.Stringify(o => o
+    .For(x => x.IsRare).BoolAs("✅", "❌"));
+// → "Animal. Name: Mittens, ..., IsRare: ❌"
+
+user.Stringify(o => o
+    .For(x => x.IsActive).BoolAs("Yes", "No"));
+// → "User. Name: Alice, IsActive: Yes"
+```
+
+### Truncate — cap long strings
+
+Cut values longer than *n* characters and append `…`.
+
+```csharp
+article.Stringify(o => o
+    .For(x => x.Body).Truncate(50));
+// → "Article. Title: Hello, Body: Lorem ipsum dolor sit amet, consectetur adipisci…"
+```
+
+### Transform / UpperCase / LowerCase
+
+Transform the value *before* it goes through normal rendering. The result is then converted to a string using the standard rules.
+
+```csharp
+animal.Stringify(o => o
+    .For(x => x.Name).UpperCase()
+    .For(x => x.Species).LowerCase());
+// → "Animal. Name: MITTENS, Species: cat, ..."
+
+// Custom transform — any function that returns a new value:
+order.Stringify(o => o
+    .For(x => x.Tags).Transform(tags => string.Join(", ", tags.Select(t => $"#{t}"))));
+```
+
+### Per-property NullAs
+
+Override the global null token for a single property.
+
+```csharp
+sparse.Stringify(o => o
+    .NullAs("—")                       // global default
+    .For(x => x.Name).NullAs("N/A")); // just for Name
+// → "Sparse. Name: N/A, Description: —, Count: 3"
+```
+
+### NumberFormat — .NET numeric format strings
+
+Use any standard or custom .NET numeric format: `"N0"` for thousands separators, `"P1"` for percentage, `"C"` for currency, `"D6"` for zero-padded integers, etc.
+
+```csharp
+invoice.Stringify(o => o
+    .For(x => x.Amount).NumberFormat("N2")
+    .For(x => x.TaxRate).NumberFormat("P0")
+    .For(x => x.Id).NumberFormat("D6"));
+// → "Invoice. Id: 001234, Amount: 12,345.68, TaxRate: 21 %"
+```
+
+### Highlight — conditional formatting
+
+Apply a custom formatter only when a condition is met. Values that don't match the predicate render normally.
+
+```csharp
+invoice.Stringify(o => o
+    .For(x => x.Amount).Highlight(
+        v => v > 100,
+        v => $"⚠️ {v:F0}"));
+// amount = 150 → "Amount: ⚠️ 150"
+// amount = 50  → "Amount: 50.00"
+```
+
+### Combining features
+
+All per-property features compose naturally:
+
+```csharp
+task.Stringify(o => o
+    .For(x => x.Source)
+        .ReplaceValues(new() { { "inbox", "Inbox" } })
+        .Prefix("[").Suffix("]"))
+    .For(x => x.Title).UpperCase().Truncate(20));
+// → "Task. Title: FIX THE CRITICAL BU…, Source: [Inbox], Priority: 1"
 ```
 
 ---

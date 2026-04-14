@@ -624,4 +624,340 @@ public class StringifyFluentTests
         Animal? animal = null;
         animal.Stringify().Should().BeNull();
     }
+
+    // ── ReplaceValues ──────────────────────────────────────────────────────
+
+    public class Task
+    {
+        public required string Title { get; set; }
+        public required string Source { get; set; }
+        public int Priority { get; set; }
+    }
+
+    [Test]
+    public void ReplaceValues_SubstitutesMatchingValues()
+    {
+        var task = new Task { Title = "Fix bug", Source = "inbox", Priority = 1 };
+
+        var result = task.Stringify(o => o
+            .NoLabel()
+            .For(x => x.Source).ReplaceValues(new() { { "area", "🗺️" }, { "inbox", "📥" } })
+            .For(x => x.Priority).Ignore());
+
+        result.Should().Contain("Source: 📥");
+    }
+
+    [Test]
+    public void ReplaceValues_FallsBackToNormalRendering_WhenNoMatch()
+    {
+        var task = new Task { Title = "Fix bug", Source = "other", Priority = 1 };
+
+        var result = task.Stringify(o => o
+            .NoLabel()
+            .For(x => x.Source).ReplaceValues(new() { { "area", "🗺️" }, { "inbox", "📥" } })
+            .For(x => x.Priority).Ignore());
+
+        result.Should().Contain("Source: other");
+    }
+
+    public class TaskWithOwner
+    {
+        public required string Title { get; set; }
+        public required AnimalWithToString Owner { get; set; }
+    }
+
+    [Test]
+    public void ReplaceValues_MatchesToString_OnNestedObject()
+    {
+        var task = new TaskWithOwner
+        {
+            Title = "Fix bug",
+            Owner = new AnimalWithToString { Name = "Mittens", Species = "Cat" }
+        };
+
+        var result = task.Stringify(o => o
+            .NoLabel()
+            .For(x => x.Owner).ReplaceValues(new() {
+                { new AnimalWithToString { Name = "Mittens", Species = "Cat" }, "🐱 Mittens" },
+                { new AnimalWithToString { Name = "Tony", Species = "Tiger" }, "🐯 Tony" }
+            }));
+
+        result.Should().Contain("Owner: 🐱 Mittens");
+    }
+
+    [Test]
+    public void ReplaceValues_WorksWithIntegerKeys()
+    {
+        var task = new Task { Title = "Fix bug", Source = "inbox", Priority = 1 };
+
+        var result = task.Stringify(o => o
+            .NoLabel()
+            .For(x => x.Priority).ReplaceValues(new() { { 1, "🔴 Critical" }, { 2, "🟡 Medium" } })
+            .For(x => x.Source).Ignore());
+
+        result.Should().Contain("Priority: 🔴 Critical");
+    }
+
+    // ── DateFormat ──────────────────────────────────────────────────────────
+
+    public class Event
+    {
+        public required string Name { get; set; }
+        public DateTime StartsAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+    }
+
+    [Test]
+    public void DateFormat_FormatsDateTime()
+    {
+        var ev = new Event
+        {
+            Name = "Launch",
+            StartsAt = new DateTime(2026, 3, 15, 14, 30, 0),
+            CreatedAt = DateTimeOffset.MinValue,
+        };
+
+        var result = ev.Stringify(o => o
+            .NoLabel()
+            .For(x => x.StartsAt).DateFormat("yyyy-MM-dd")
+            .For(x => x.CreatedAt).Ignore());
+
+        result.Should().Contain("StartsAt: 2026-03-15");
+    }
+
+    [Test]
+    public void DateFormat_FormatsDateTimeOffset()
+    {
+        var ev = new Event
+        {
+            Name = "Launch",
+            StartsAt = DateTime.MinValue,
+            CreatedAt = new DateTimeOffset(2026, 6, 1, 9, 0, 0, TimeSpan.Zero),
+        };
+
+        var result = ev.Stringify(o => o
+            .NoLabel()
+            .For(x => x.CreatedAt).DateFormat("dd MMM yyyy HH:mm")
+            .For(x => x.StartsAt).Ignore());
+
+        result.Should().Contain("CreatedAt: 01 Jun 2026 09:00");
+    }
+
+    // ── BoolAs ──────────────────────────────────────────────────────────────
+
+    [Test]
+    public void BoolAs_ReplacesTrue()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = true };
+
+        var result = animal.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.IsRare)
+            .For(x => x.IsRare).BoolAs("✅", "❌"));
+
+        result.Should().Be("IsRare: ✅");
+    }
+
+    [Test]
+    public void BoolAs_ReplacesFalse()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        var result = animal.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.IsRare)
+            .For(x => x.IsRare).BoolAs("Yes", "No"));
+
+        result.Should().Be("IsRare: No");
+    }
+
+    // ── Truncate ────────────────────────────────────────────────────────────
+
+    [Test]
+    public void Truncate_CutsLongStrings()
+    {
+        var animal = new Animal { Name = "Bartholomew McFluffington III", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        var result = animal.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Name)
+            .For(x => x.Name).Truncate(10));
+
+        result.Should().Be("Name: Bartholome…");
+    }
+
+    [Test]
+    public void Truncate_LeavesShortStringsAlone()
+    {
+        var animal = new Animal { Name = "Kit", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        var result = animal.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Name)
+            .For(x => x.Name).Truncate(10));
+
+        result.Should().Be("Name: Kit");
+    }
+
+    // ── Transform / UpperCase / LowerCase ───────────────────────────────────
+
+    [Test]
+    public void Transform_AppliesCustomTransform()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        var result = animal.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Name)
+            .For(x => x.Name).Transform(v => $"*** {v} ***"));
+
+        result.Should().Be("Name: *** Mittens ***");
+    }
+
+    [Test]
+    public void UpperCase_ConvertsToUpperCase()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        var result = animal.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Name)
+            .For(x => x.Name).UpperCase());
+
+        result.Should().Be("Name: MITTENS");
+    }
+
+    [Test]
+    public void LowerCase_ConvertsToLowerCase()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        var result = animal.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Species)
+            .For(x => x.Species).LowerCase());
+
+        result.Should().Be("Species: cat");
+    }
+
+    // ── Per-property NullAs ─────────────────────────────────────────────────
+
+    [Test]
+    public void PropertyNullAs_OverridesGlobalNullToken()
+    {
+        var sparse = new Sparse { Name = null, Description = null, Count = 3 };
+
+        var result = sparse.Stringify(o => o
+            .NoLabel()
+            .NullAs("—")
+            .For(x => x.Name).NullAs("N/A"));
+
+        result.Should().Contain("Name: N/A");
+        result.Should().Contain("Description: —");
+    }
+
+    // ── NumberFormat ────────────────────────────────────────────────────────
+
+    public class Invoice
+    {
+        public int Id { get; set; }
+        public double Amount { get; set; }
+        public double TaxRate { get; set; }
+    }
+
+    [Test]
+    public void NumberFormat_FormatsWithThousandsSeparator()
+    {
+        var invoice = new Invoice { Id = 1, Amount = 12345.6789, TaxRate = 0.21 };
+
+        var result = invoice.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Amount)
+            .For(x => x.Amount).NumberFormat("N2"));
+
+        // InvariantCulture uses comma as thousands separator
+        result.Should().Be("Amount: 12,345.68");
+    }
+
+    [Test]
+    public void NumberFormat_FormatsPercentage()
+    {
+        var invoice = new Invoice { Id = 1, Amount = 100, TaxRate = 0.21 };
+
+        var result = invoice.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.TaxRate)
+            .For(x => x.TaxRate).NumberFormat("P0"));
+
+        result.Should().Be("TaxRate: 21 %");
+    }
+
+    [Test]
+    public void NumberFormat_FormatsIntegers()
+    {
+        var invoice = new Invoice { Id = 1234, Amount = 100, TaxRate = 0 };
+
+        var result = invoice.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Id)
+            .For(x => x.Id).NumberFormat("D6"));
+
+        result.Should().Be("Id: 001234");
+    }
+
+    // ── Highlight ───────────────────────────────────────────────────────────
+
+    [Test]
+    public void Highlight_AppliesFormatterWhenPredicateMatches()
+    {
+        var invoice = new Invoice { Id = 1, Amount = 150, TaxRate = 0 };
+
+        var result = invoice.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Amount)
+            .For(x => x.Amount).Highlight(v => v > 100, v => $"⚠️ {v:F0}"));
+
+        result.Should().Be("Amount: ⚠️ 150");
+    }
+
+    [Test]
+    public void Highlight_FallsBackToNormal_WhenPredicateDoesNotMatch()
+    {
+        var invoice = new Invoice { Id = 1, Amount = 50, TaxRate = 0 };
+
+        var result = invoice.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Amount)
+            .For(x => x.Amount).Highlight(v => v > 100, v => $"⚠️ {v:F0}"));
+
+        result.Should().Contain("Amount: 50.00");
+    }
+
+    // ── Combinations ────────────────────────────────────────────────────────
+
+    [Test]
+    public void Transform_CombinesWithTruncate()
+    {
+        var animal = new Animal { Name = "Mittens", Species = "Cat", Weight = 4.5, Age = 5, IsRare = false };
+
+        var result = animal.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Name)
+            .For(x => x.Name).UpperCase().Truncate(4));
+
+        result.Should().Be("Name: MITT…");
+    }
+
+    [Test]
+    public void ReplaceValues_CombinesWithPrefix()
+    {
+        var task = new Task { Title = "Fix bug", Source = "inbox", Priority = 1 };
+
+        var result = task.Stringify(o => o
+            .NoLabel()
+            .Only(x => x.Source)
+            .For(x => x.Source).ReplaceValues(new() { { "inbox", "Inbox" } }).Prefix("[").Suffix("]"));
+
+        result.Should().Be("Source: [Inbox]");
+    }
 }
