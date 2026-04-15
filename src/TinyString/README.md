@@ -308,10 +308,4 @@ public class Animal
 
 ---
 
-## Migrating from the attribute API
-
-Previous versions configured stringification via `[Stringify]`, `[StringifyProperty]`, and `[StringifyIgnore]` attributes. These still work but are deprecated and will be removed in a future major version. Move the configuration to the `.Stringify()` call site instead.
-
----
-
 MIT License

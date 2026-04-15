@@ -14,8 +14,6 @@ internal sealed record RenderContext(
 
 public static class Stringifier
 {
-    // ── New fluent API ──────────────────────────────────────────────────────
-
     /// <summary>
     /// Converts an object to a human-readable string.
     /// Pass an optional <paramref name="configure"/> action to customise the output
@@ -24,11 +22,6 @@ public static class Stringifier
     public static string? Stringify<T>(this T obj, Action<StringifyOptions<T>>? configure = null)
     {
         if (obj is null) return null;
-
-        // When called with no options, honour any legacy attributes so that
-        // existing code keeps working without changes.
-        if (configure is null && HasLegacyAttributes(typeof(T)))
-            return StringifyLegacy(obj);
 
         var options = new StringifyOptions<T>();
         configure?.Invoke(options);
@@ -152,92 +145,7 @@ public static class Stringifier
         return sb.ToString().TrimEnd();
     }
 
-    // ── Legacy attribute-based API (deprecated) ─────────────────────────────
-
-    /// <summary>
-    /// Converts an object to a string using the legacy attribute-based configuration
-    /// (<c>[Stringify]</c>, <c>[StringifyProperty]</c>, <c>[StringifyIgnore]</c>).
-    /// </summary>
-    /// <remarks>
-    /// This overload is kept for backwards compatibility. Migrate to
-    /// <see cref="Stringify{T}(T, Action{StringifyOptions{T}})"/> with the fluent API.
-    /// Attribute-based configuration will be removed in a future major version.
-    /// </remarks>
-    [Obsolete(
-        "Attribute-based configuration is deprecated. " +
-        "Use Stringify<T>(Action<StringifyOptions<T>>) with the fluent API instead. " +
-        "Attribute-based configuration will be removed in a future major version.")]
-    public static string? Stringify(this object? obj) =>
-        obj is null ? null : StringifyLegacy(obj);
-
-    // Called internally (no obsolete warning) for legacy-attribute objects and nested fallback.
-    internal static string StringifyLegacy(object obj)
-    {
-        var type      = obj.GetType();
-        var classAttr = type.GetCustomAttribute<StringifyAttribute>() ?? new StringifyAttribute();
-        var sb        = new StringBuilder();
-
-        if (classAttr.Emoji.IsNotEmpty())
-            sb.Append(classAttr.Emoji);
-
-        if (classAttr.PrintClassName)
-        {
-            if (sb.Length > 0) sb.Append(' ');
-            sb.Append(type.Name);
-        }
-
-        if (sb.Length > 0)
-        {
-            if (classAttr.PrintStyle == PrintStyle.MultiLine)
-                sb.AppendLine();
-            else
-                sb.Append(classAttr.ClassNameSeparator);
-        }
-
-        var props = type
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.GetIndexParameters().Length == 0 && p.CanRead)
-            .Where(p => p.GetCustomAttribute<StringifyIgnoreAttribute>() == null);
-
-        var first = true;
-        foreach (var prop in props)
-        {
-            var propAttr  = prop.GetCustomAttribute<StringifyPropertyAttribute>();
-            var propName  = ConvertName(prop.Name, classAttr.NamingFormat);
-            var format    = propAttr?.Format ?? classAttr.PropertyFormat;
-            var collSep   = propAttr?.CollectionSeparator ?? classAttr.CollectionSeparator;
-            var decimals  = propAttr?.Decimals ?? classAttr.Decimals;
-
-            var value     = prop.GetValue(obj);
-            var ctx       = new RenderContext(decimals, collSep, "null", null);
-            var converted = ConvertValue(value, ctx);
-            var line      = format.Replace("{k}", propName).Replace("{v}", converted);
-
-            if (classAttr.PrintStyle == PrintStyle.SingleLine)
-            {
-                if (!first) sb.Append(classAttr.PropertySeparator);
-                sb.Append(line);
-                first = false;
-            }
-            else
-            {
-                sb.AppendLine(line);
-            }
-        }
-
-        return sb.ToString().TrimEnd();
-    }
-
     // ── Shared helpers ──────────────────────────────────────────────────────
-
-    private static bool HasLegacyAttributes(Type type)
-    {
-        if (type.GetCustomAttribute<StringifyAttribute>() != null) return true;
-        return type
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Any(p => p.GetCustomAttribute<StringifyPropertyAttribute>() != null
-                   || p.GetCustomAttribute<StringifyIgnoreAttribute>() != null);
-    }
 
     private static bool IsDateLike(object? value) => value is DateTime or DateTimeOffset
         || value?.GetType().Name is "DateOnly" or "TimeOnly";
@@ -283,8 +191,31 @@ public static class Stringifier
         if (value.GetType().GetMethod("ToString", Type.EmptyTypes)?.DeclaringType != typeof(object))
             return value.ToString()!;
 
-        // 4. Reflect over the object with legacy defaults
-        return StringifyLegacy(value);
+        // 4. Reflect over public properties with default formatting
+        return StringifyReflect(value);
+    }
+
+    private static string StringifyReflect(object obj)
+    {
+        var type = obj.GetType();
+        var sb   = new StringBuilder();
+        sb.Append(type.Name);
+        sb.Append(". ");
+
+        var props = type
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.GetIndexParameters().Length == 0 && p.CanRead);
+
+        var first = true;
+        var ctx   = new RenderContext(2, ", ", "null", null);
+        foreach (var prop in props)
+        {
+            if (!first) sb.Append(", ");
+            sb.Append(prop.Name).Append(": ").Append(ConvertValue(prop.GetValue(obj), ctx));
+            first = false;
+        }
+
+        return sb.ToString().TrimEnd();
     }
 
     private static string ConvertCollection(IEnumerable enumerable, RenderContext ctx, int? maxItems)
