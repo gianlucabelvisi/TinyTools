@@ -313,6 +313,13 @@ public class OptionalTests
     }
 
     [Test]
+    public void Select_WithValue_WhenMapperReturnsNull_ReturnsEmptyOptional()
+    {
+        var optional = Optional<int>.Of(6);
+        optional.Select<string?>(_ => null).IsNotPresent().Should().BeTrue();
+    }
+
+    [Test]
     public void Select_WithoutValue_ReturnsEmptyOptional()
     {
         var optional = Optional<int>.Empty();

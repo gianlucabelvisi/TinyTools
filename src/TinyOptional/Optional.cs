@@ -119,7 +119,7 @@ public class Optional<T> : IEquatable<Optional<T>>
     /// </summary>
     public Optional<TResult> Select<TResult>(Func<T, TResult> mapper)
     {
-        return !_hasValue ? Optional<TResult>.Empty() : Optional<TResult>.Of(mapper(_value!));
+        return !_hasValue ? Optional<TResult>.Empty() : Optional<TResult>.OfNullable(mapper(_value!));
     }
 
     /// <summary>
