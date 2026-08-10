@@ -80,7 +80,28 @@ public class Optional<T> : IEquatable<Optional<T>>
     /// </summary>
     public T OrElseGet(Func<T> other)
     {
+        if (other == null) throw new ArgumentNullException(nameof(other));
         return _hasValue ? _value! : other();
+    }
+
+    /// <summary>
+    /// Returns this Optional if a value is present, otherwise returns <paramref name="other"/>.
+    /// Unlike <see cref="OrElse"/>, the fallback is itself an Optional (and may be empty).
+    /// </summary>
+    public Optional<T> Or(Optional<T> other)
+    {
+        if (other == null) throw new ArgumentNullException(nameof(other));
+        return _hasValue ? this : other;
+    }
+
+    /// <summary>
+    /// Returns this Optional if a value is present, otherwise returns the Optional
+    /// produced by <paramref name="supplier"/>. The supplier is only invoked when empty.
+    /// </summary>
+    public Optional<T> Or(Func<Optional<T>> supplier)
+    {
+        if (supplier == null) throw new ArgumentNullException(nameof(supplier));
+        return _hasValue ? this : supplier() ?? Empty();
     }
 
     /// <summary>
@@ -93,6 +114,7 @@ public class Optional<T> : IEquatable<Optional<T>>
     /// </summary>
     public void OrElseDo(Action other)
     {
+        if (other == null) throw new ArgumentNullException(nameof(other));
         if (!_hasValue) other.Invoke();
     }
 
@@ -101,6 +123,7 @@ public class Optional<T> : IEquatable<Optional<T>>
     /// </summary>
     public Optional<T> Where(Func<T, bool> predicate)
     {
+        if (predicate == null) throw new ArgumentNullException(nameof(predicate));
         if (!_hasValue) return this;
         return predicate(_value!) ? this : Empty();
     }
@@ -119,7 +142,28 @@ public class Optional<T> : IEquatable<Optional<T>>
     /// </summary>
     public Optional<TResult> Select<TResult>(Func<T, TResult> mapper)
     {
+        if (mapper == null) throw new ArgumentNullException(nameof(mapper));
         return !_hasValue ? Optional<TResult>.Empty() : Optional<TResult>.OfNullable(mapper(_value!));
+    }
+
+    /// <summary>
+    /// Cast the contained value to <typeparamref name="TResult"/> if present and assignable,
+    /// otherwise return an empty Optional. Never throws on an incompatible type.
+    /// </summary>
+    public Optional<TResult> OfType<TResult>()
+    {
+        return _hasValue && _value is TResult r ? Optional<TResult>.Of(r) : Optional<TResult>.Empty();
+    }
+
+    /// <summary>
+    /// Execute a side-effecting action on the value if present, then return this Optional
+    /// unchanged to allow fluent chaining.
+    /// </summary>
+    public Optional<T> Tap(Action<T> action)
+    {
+        if (action == null) throw new ArgumentNullException(nameof(action));
+        if (_hasValue) action(_value!);
+        return this;
     }
 
     /// <summary>
@@ -136,7 +180,8 @@ public class Optional<T> : IEquatable<Optional<T>>
     /// </summary>
     public Optional<TResult> SelectMany<TResult>(Func<T, Optional<TResult>> mapper)
     {
-        return !_hasValue ? Optional<TResult>.Empty() : mapper(_value!);
+        if (mapper == null) throw new ArgumentNullException(nameof(mapper));
+        return !_hasValue ? Optional<TResult>.Empty() : mapper(_value!) ?? Optional<TResult>.Empty();
     }
 
     /// <summary>
@@ -144,6 +189,8 @@ public class Optional<T> : IEquatable<Optional<T>>
     /// </summary>
     public TResult Match<TResult>(Func<T, TResult> onPresent, Func<TResult> onEmpty)
     {
+        if (onPresent == null) throw new ArgumentNullException(nameof(onPresent));
+        if (onEmpty == null) throw new ArgumentNullException(nameof(onEmpty));
         return _hasValue ? onPresent(_value!) : onEmpty();
     }
 
@@ -161,6 +208,7 @@ public class Optional<T> : IEquatable<Optional<T>>
     /// </summary>
     public OptionalIfPresentResult<T> IfPresent(Action<T> action)
     {
+        if (action == null) throw new ArgumentNullException(nameof(action));
         if (_hasValue) action(_value!);
         return new OptionalIfPresentResult<T>(this);
     }
@@ -178,6 +226,7 @@ public class Optional<T> : IEquatable<Optional<T>>
     /// </summary>
     public OptionalIfNotPresentResult<T> IfNotPresent(Action action)
     {
+        if (action == null) throw new ArgumentNullException(nameof(action));
         if (!_hasValue) action();
         return new OptionalIfNotPresentResult<T>(this);
     }
@@ -207,8 +256,14 @@ public class Optional<T> : IEquatable<Optional<T>>
 
     public override int GetHashCode() => _hasValue ? EqualityComparer<T>.Default.GetHashCode(_value!) : 0;
 
-    public static bool operator ==(Optional<T> left, Optional<T> right) => left.Equals(right);
-    public static bool operator !=(Optional<T> left, Optional<T> right) => !left.Equals(right);
+    public static bool operator ==(Optional<T>? left, Optional<T>? right)
+    {
+        if (ReferenceEquals(left, right)) return true;
+        if (left is null || right is null) return false;
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(Optional<T>? left, Optional<T>? right) => !(left == right);
 }
 
 public class OptionalIfPresentResult<T>(Optional<T> optional)
