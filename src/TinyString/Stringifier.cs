@@ -28,9 +28,26 @@ public static class Stringifier
         return StringifyWithOptions(obj, options);
     }
 
+    /// <summary>
+    /// Converts an object to a human-readable string using a pre-built
+    /// <see cref="StringifyOptions{T}"/>. Useful for reusing the same configuration
+    /// across many calls without rebuilding it each time.
+    /// </summary>
+    public static string? Stringify<T>(this T obj, StringifyOptions<T> options)
+    {
+        if (obj is null) return null;
+        if (options is null) throw new ArgumentNullException(nameof(options));
+        return StringifyWithOptions(obj, options);
+    }
+
     internal static string StringifyWithOptions<T>(T obj, StringifyOptions<T> opts)
     {
-        var type = typeof(T);
+        // Prefer the runtime type so base-typed / object references still expose their
+        // real properties. Fall back to T only when the runtime type is unavailable.
+        var declaredType = typeof(T);
+        var runtimeType = obj?.GetType() ?? declaredType;
+        var type = declaredType.IsAssignableFrom(runtimeType) ? runtimeType : declaredType;
+
         var sb = new StringBuilder();
 
         // Header
@@ -108,6 +125,11 @@ public static class Stringifier
                             or ushort or sbyte or float or double or decimal)
                 {
                     convertedValue = numVal.ToString(cfg.NumberFormat, CultureInfo.InvariantCulture);
+                }
+                // General-purpose Format for any IFormattable
+                else if (cfg?.Format != null && effectiveValue is IFormattable formattable)
+                {
+                    convertedValue = formattable.ToString(cfg.Format, CultureInfo.InvariantCulture);
                 }
                 else
                 {
@@ -223,12 +245,17 @@ public static class Stringifier
         var separator = ctx.CollectionSeparator;
         var allItems  = enumerable.Cast<object?>().ToList();
 
-        // Apply MaxItems truncation
+        // Apply MaxItems truncation. Treat negatives as zero so MaxItems(0) shows only
+        // the overflow marker rather than throwing on a negative Take count.
         int overflow = 0;
-        if (maxItems.HasValue && allItems.Count > maxItems.Value)
+        if (maxItems.HasValue)
         {
-            overflow = allItems.Count - maxItems.Value;
-            allItems = allItems.Take(maxItems.Value).ToList();
+            var limit = Math.Max(0, maxItems.Value);
+            if (allItems.Count > limit)
+            {
+                overflow = allItems.Count - limit;
+                allItems = allItems.Take(limit).ToList();
+            }
         }
 
         // Render each item (maxItems does not propagate into nested collections)

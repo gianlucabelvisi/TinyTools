@@ -147,6 +147,7 @@ internal sealed class PropertyConfig
     public Func<object?, object?>? Transform { get; set; }
     public string? NullAs { get; set; }
     public string? NumberFormat { get; set; }
+    public string? Format { get; set; }
     public Func<object?, bool>? HighlightPredicate { get; set; }
     public Func<object?, string>? HighlightFormatter { get; set; }
 }
