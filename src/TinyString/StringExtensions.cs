@@ -138,4 +138,84 @@ public static class StringExtensions
     /// <returns></returns>
     public static string Join<T>(this IEnumerable<T> source, string separator) => string.Join(separator, source);
 
+    /// <summary>
+    /// Truncate a string to <paramref name="maxLength"/> characters, appending
+    /// <paramref name="ellipsis"/> when truncation occurs. The ellipsis is included in the
+    /// resulting length so the output never exceeds <paramref name="maxLength"/>.
+    /// </summary>
+    public static string Truncate(this string? str, int maxLength, string ellipsis = "…")
+    {
+        if (string.IsNullOrEmpty(str) || maxLength < 0) return str ?? string.Empty;
+        if (str!.Length <= maxLength) return str;
+        if (maxLength <= ellipsis.Length) return str[..maxLength];
+        return str[..(maxLength - ellipsis.Length)] + ellipsis;
+    }
+
+    /// <summary>
+    /// Repeat a string <paramref name="count"/> times.
+    /// </summary>
+    public static string Repeat(this string? str, int count)
+    {
+        if (string.IsNullOrEmpty(str) || count <= 0) return string.Empty;
+        return string.Concat(Enumerable.Repeat(str, count));
+    }
+
+    /// <summary>
+    /// Convert a string to Title Case (first letter of each word upper-cased).
+    /// </summary>
+    public static string ToTitleCase(this string? str)
+    {
+        if (string.IsNullOrEmpty(str)) return str ?? string.Empty;
+        var sb = new StringBuilder(str!.Length);
+        var newWord = true;
+        foreach (var c in str)
+        {
+            if (char.IsWhiteSpace(c))
+            {
+                newWord = true;
+                sb.Append(c);
+            }
+            else
+            {
+                sb.Append(newWord ? char.ToUpperInvariant(c) : char.ToLowerInvariant(c));
+                newWord = false;
+            }
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Ensure the string starts with <paramref name="prefix"/>, prepending it if missing.
+    /// </summary>
+    public static string EnsurePrefix(this string? str, string prefix)
+    {
+        str ??= string.Empty;
+        return str.StartsWith(prefix, StringComparison.Ordinal) ? str : prefix + str;
+    }
+
+    /// <summary>
+    /// Ensure the string ends with <paramref name="suffix"/>, appending it if missing.
+    /// </summary>
+    public static string EnsureSuffix(this string? str, string suffix)
+    {
+        str ??= string.Empty;
+        return str.EndsWith(suffix, StringComparison.Ordinal) ? str : str + suffix;
+    }
+
+    /// <summary>
+    /// Return null if the string is null or empty, otherwise the string itself.
+    /// Handy for null-coalescing defaults: <c>value.NullIfEmpty() ?? "fallback"</c>.
+    /// </summary>
+    public static string? NullIfEmpty(this string? str) => string.IsNullOrEmpty(str) ? null : str;
+
+    /// <summary>
+    /// Reverse the characters of a string.
+    /// </summary>
+    public static string Reverse(this string? str)
+    {
+        if (string.IsNullOrEmpty(str)) return str ?? string.Empty;
+        var chars = str!.ToCharArray();
+        Array.Reverse(chars);
+        return new string(chars);
+    }
 }

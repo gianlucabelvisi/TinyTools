@@ -156,6 +156,17 @@ public sealed class PropertyBuilder<T, TProp>
     }
 
     /// <summary>
+    /// Format any <see cref="IFormattable"/> value (numbers, dates, <see cref="Guid"/>,
+    /// <see cref="TimeSpan"/>, etc.) using a .NET format string with the invariant culture.
+    /// A general-purpose alternative to <see cref="DateFormat"/> / <see cref="NumberFormat"/>.
+    /// </summary>
+    public PropertyBuilder<T, TProp> Format(string format)
+    {
+        _config.Format = format;
+        return this;
+    }
+
+    /// <summary>
     /// Apply a custom formatter only when the predicate is true.
     /// Values that don't match the predicate are rendered normally.
     /// </summary>
