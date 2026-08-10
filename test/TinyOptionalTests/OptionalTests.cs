@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using TinyOptional;
 
 namespace TinyOptionalTests;
